@@ -1,14 +1,29 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FaTimes,
   FaCheckCircle,
   FaClock,
+  FaCamera,
+  FaThumbsUp,
+  FaThumbsDown,
+  FaShieldAlt,
+  FaHandsHelping,
 } from "react-icons/fa";
 import type { Pin } from "./MapView";
 import { getCategoryById } from "./categories";
 import CategoryIcon from "./CategoryIcon";
 import { useTheme } from "./ThemeContext";
+import { useAuth } from "./AuthContext";
+import {
+  markPendingResolution,
+  requestCommunityResolution,
+  approveCommunityResolution,
+  castVote,
+  fetchVotes,
+  type VoteTally,
+} from "../lib/pins";
 
 interface PinDetailModalProps {
   pin: Pin;
@@ -20,17 +35,112 @@ interface PinDetailModalProps {
 export default function PinDetailModal({
   pin,
   onClose,
+  onPinUpdate,
 }: PinDetailModalProps) {
   const theme = useTheme();
   const isDark = theme === "dark";
+  const { user, isCommunityWatcher } = useAuth();
   const category = getCategoryById(pin.categoryId);
 
   const isResolved = pin.status === "resolved";
   const isPending = pin.status === "pending_resolved";
+  const isActive = pin.status === "active";
+
+  const [showResolveForm, setShowResolveForm] = useState(false);
+  const [proofPhoto, setProofPhoto] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [votes, setVotes] = useState<VoteTally | null>(null);
+  const [votingLoading, setVotingLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isPending && user) {
+      fetchVotes(pin.id, user.id).then(setVotes).catch(console.error);
+    }
+  }, [isPending, pin.id, user]);
+
+  const handlePhotoCapture = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setProofPhoto(reader.result as string);
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleWatcherResolve = useCallback(async () => {
+    if (!proofPhoto || !user) return;
+    setSubmitting(true);
+    try {
+      const updated = await markPendingResolution(pin.id, proofPhoto, user.id);
+      onPinUpdate?.(updated);
+      setShowResolveForm(false);
+      setProofPhoto(null);
+    } catch (err) {
+      console.error("Failed to mark pending resolution:", err);
+      alert("Failed to submit. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [proofPhoto, user, pin.id, onPinUpdate]);
+
+  const handleCommunityResolve = useCallback(async () => {
+    if (!proofPhoto || !user) return;
+    setSubmitting(true);
+    try {
+      const updated = await requestCommunityResolution(pin.id, proofPhoto, user.id);
+      onPinUpdate?.(updated);
+      setShowResolveForm(false);
+      setProofPhoto(null);
+    } catch (err) {
+      console.error("Failed to request resolution:", err);
+      alert("Failed to submit. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [proofPhoto, user, pin.id, onPinUpdate]);
+
+  const handleApprove = useCallback(async () => {
+    if (!user) return;
+    setSubmitting(true);
+    try {
+      const updated = await approveCommunityResolution(pin.id, user.id);
+      onPinUpdate?.(updated);
+    } catch (err) {
+      console.error("Failed to approve resolution:", err);
+      alert("Failed to approve. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [user, pin.id, onPinUpdate]);
+
+  const handleVote = useCallback(
+    async (vote: "up" | "down") => {
+      if (!user) return;
+      setVotingLoading(true);
+      try {
+        await castVote(pin.id, user.id, vote);
+        const updated = await fetchVotes(pin.id, user.id);
+        setVotes(updated);
+      } catch (err) {
+        console.error("Vote failed:", err);
+      } finally {
+        setVotingLoading(false);
+      }
+    },
+    [user, pin.id]
+  );
 
   if (!category) return null;
 
   const timeAgo = getTimeAgo(pin.createdAt);
+
+  const pendingDeadline = pin.pendingResolvedAt
+    ? new Date(new Date(pin.pendingResolvedAt).getTime() + 3 * 24 * 60 * 60 * 1000)
+    : null;
+  const timeRemaining = pendingDeadline ? getTimeRemaining(pendingDeadline) : null;
+
+  const totalVotes = votes ? votes.up + votes.down : 0;
+  const upPercent = totalVotes > 0 ? Math.round((votes!.up / totalVotes) * 100) : 0;
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-end justify-center">
@@ -156,6 +266,11 @@ export default function PinDetailModal({
                 Pending
               </span>
             )}
+            {isActive && pin.communityResolveRequested && (
+              <span className="rounded-full bg-blue-500/15 px-2.5 py-1 text-xs font-medium text-blue-400">
+                Resolution Requested
+              </span>
+            )}
           </div>
 
           {/* Description */}
@@ -166,6 +281,185 @@ export default function PinDetailModal({
           >
             {pin.description}
           </p>
+
+          {/* Community resolution request banner (for watchers to approve) */}
+          {isActive && pin.communityResolveRequested && pin.resolvedPhotoUrl && (
+            <div
+              className={`mt-4 rounded-xl border p-3 ${
+                isDark
+                  ? "border-blue-900/50 bg-blue-950/30"
+                  : "border-blue-200 bg-blue-50"
+              }`}
+            >
+              <div className="mb-2 flex items-center gap-2">
+                <FaHandsHelping
+                  size={13}
+                  className={isDark ? "text-blue-400" : "text-blue-600"}
+                />
+                <p
+                  className={`text-xs font-semibold ${
+                    isDark ? "text-blue-400" : "text-blue-700"
+                  }`}
+                >
+                  A community member submitted a fix
+                </p>
+              </div>
+              <img
+                src={pin.resolvedPhotoUrl}
+                alt="Resolution proof"
+                className="mb-3 w-full rounded-lg object-cover"
+                style={{ maxHeight: "180px" }}
+              />
+              {isCommunityWatcher && (
+                <button
+                  onClick={handleApprove}
+                  disabled={submitting}
+                  className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-50 ${
+                    isDark
+                      ? "bg-[#f5c542] text-black hover:bg-[#e0b23a]"
+                      : "bg-[#b8860b] text-white hover:bg-[#a0750a]"
+                  }`}
+                >
+                  <FaShieldAlt size={12} />
+                  {submitting ? "Approving..." : "Approve & Start Voting"}
+                </button>
+              )}
+              {!isCommunityWatcher && (
+                <p
+                  className={`text-xs text-center ${
+                    isDark ? "text-blue-400/70" : "text-blue-600/70"
+                  }`}
+                >
+                  Awaiting Community Watcher approval
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Pending resolution: voting section */}
+          {isPending && (
+            <div
+              className={`mt-4 rounded-xl border p-4 ${
+                isDark
+                  ? "border-amber-900/50 bg-amber-950/20"
+                  : "border-amber-200 bg-amber-50"
+              }`}
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <p
+                  className={`text-xs font-semibold ${
+                    isDark ? "text-amber-400" : "text-amber-700"
+                  }`}
+                >
+                  Community Voting
+                </p>
+                {timeRemaining && (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      isDark
+                        ? "bg-amber-500/15 text-amber-400"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {timeRemaining}
+                  </span>
+                )}
+              </div>
+
+              {pin.resolvedPhotoUrl && (
+                <img
+                  src={pin.resolvedPhotoUrl}
+                  alt="Resolution proof"
+                  className="mb-3 w-full rounded-lg object-cover"
+                  style={{ maxHeight: "160px" }}
+                />
+              )}
+
+              <p
+                className={`mb-3 text-xs leading-relaxed ${
+                  isDark ? "text-amber-300/70" : "text-amber-800/70"
+                }`}
+              >
+                Does this look resolved? Vote to confirm or reject. Needs 67%
+                approval after 3 days.
+              </p>
+
+              {/* Vote bar */}
+              {votes && totalVotes > 0 && (
+                <div className="mb-3">
+                  <div className="mb-1 flex justify-between text-[10px] font-medium">
+                    <span className={isDark ? "text-green-400" : "text-green-600"}>
+                      {votes.up} upvote{votes.up !== 1 ? "s" : ""}
+                    </span>
+                    <span className={isDark ? "text-red-400" : "text-red-600"}>
+                      {votes.down} downvote{votes.down !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div
+                    className={`h-2 w-full overflow-hidden rounded-full ${
+                      isDark ? "bg-neutral-800" : "bg-neutral-200"
+                    }`}
+                  >
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-green-500 to-green-400 transition-all"
+                      style={{ width: `${upPercent}%` }}
+                    />
+                  </div>
+                  <p
+                    className={`mt-1 text-center text-[10px] ${
+                      isDark ? "text-neutral-500" : "text-neutral-400"
+                    }`}
+                  >
+                    {upPercent}% approval · {totalVotes} total vote{totalVotes !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              )}
+
+              {/* Vote buttons */}
+              {user && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleVote("up")}
+                    disabled={votingLoading}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-50 ${
+                      votes?.userVote === "up"
+                        ? "bg-green-500 text-white"
+                        : isDark
+                          ? "border border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20"
+                          : "border border-green-500/30 bg-green-50 text-green-600 hover:bg-green-100"
+                    }`}
+                  >
+                    <FaThumbsUp size={12} />
+                    Looks Fixed
+                  </button>
+                  <button
+                    onClick={() => handleVote("down")}
+                    disabled={votingLoading}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-50 ${
+                      votes?.userVote === "down"
+                        ? "bg-red-500 text-white"
+                        : isDark
+                          ? "border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                          : "border border-red-500/30 bg-red-50 text-red-600 hover:bg-red-100"
+                    }`}
+                  >
+                    <FaThumbsDown size={12} />
+                    Not Fixed
+                  </button>
+                </div>
+              )}
+
+              {!user && (
+                <p
+                  className={`text-center text-xs ${
+                    isDark ? "text-neutral-500" : "text-neutral-400"
+                  }`}
+                >
+                  Sign in to vote on this resolution
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Resolved proof section */}
           {isResolved && pin.resolvedPhotoUrl && (
@@ -200,6 +494,132 @@ export default function PinDetailModal({
               )}
             </div>
           )}
+
+          {/* Action buttons for active pins */}
+          {isActive && !pin.communityResolveRequested && user && !showResolveForm && (
+            <div className="mt-4 flex gap-2">
+              {isCommunityWatcher ? (
+                <button
+                  onClick={() => setShowResolveForm(true)}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                    isDark
+                      ? "bg-[#f5c542] text-black hover:bg-[#e0b23a]"
+                      : "bg-[#b8860b] text-white hover:bg-[#a0750a]"
+                  }`}
+                >
+                  <FaShieldAlt size={12} />
+                  I Fixed This
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowResolveForm(true)}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                    isDark
+                      ? "border border-[#f5c542]/30 bg-[#f5c542]/10 text-[#f5c542] hover:bg-[#f5c542]/20"
+                      : "border border-[#b8860b]/30 bg-[#b8860b]/10 text-[#b8860b] hover:bg-[#b8860b]/20"
+                  }`}
+                >
+                  <FaHandsHelping size={12} />
+                  Request Resolution
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Proof photo upload form */}
+          {showResolveForm && (
+            <div
+              className={`mt-4 rounded-xl border p-4 ${
+                isDark
+                  ? "border-neutral-800 bg-neutral-900/50"
+                  : "border-neutral-200 bg-neutral-50"
+              }`}
+            >
+              <p
+                className={`mb-3 text-sm font-semibold ${
+                  isDark ? "text-white" : "text-neutral-900"
+                }`}
+              >
+                {isCommunityWatcher
+                  ? "Submit proof that this issue is fixed"
+                  : "Submit proof of your fix for review"}
+              </p>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoCapture}
+                className="hidden"
+              />
+
+              {proofPhoto ? (
+                <div className="relative mb-3">
+                  <img
+                    src={proofPhoto}
+                    alt="Proof preview"
+                    className="w-full rounded-lg object-cover"
+                    style={{ maxHeight: "180px" }}
+                  />
+                  <button
+                    onClick={() => setProofPhoto(null)}
+                    className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white"
+                  >
+                    <FaTimes size={10} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`mb-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed py-8 text-sm transition-colors ${
+                    isDark
+                      ? "border-neutral-700 text-neutral-400 hover:border-neutral-600 hover:text-neutral-300"
+                      : "border-neutral-300 text-neutral-500 hover:border-neutral-400 hover:text-neutral-600"
+                  }`}
+                >
+                  <FaCamera size={16} />
+                  Take or Upload Photo
+                </button>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowResolveForm(false);
+                    setProofPhoto(null);
+                  }}
+                  className={`flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors ${
+                    isDark
+                      ? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                      : "bg-neutral-200 text-neutral-600 hover:bg-neutral-300"
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={isCommunityWatcher ? handleWatcherResolve : handleCommunityResolve}
+                  disabled={!proofPhoto || submitting}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-40 ${
+                    isDark
+                      ? "bg-[#f5c542] text-black hover:bg-[#e0b23a]"
+                      : "bg-[#b8860b] text-white hover:bg-[#a0750a]"
+                  }`}
+                >
+                  {submitting ? (
+                    <>
+                      <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      Submitting...
+                    </>
+                  ) : isCommunityWatcher ? (
+                    "Submit & Start Voting"
+                  ) : (
+                    "Submit for Review"
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -217,4 +637,18 @@ function getTimeAgo(dateStr: string): string {
   if (diffHr < 24) return `${diffHr}h ago`;
   const diffDay = Math.floor(diffHr / 24);
   return `${diffDay}d ago`;
+}
+
+function getTimeRemaining(deadline: Date): string | null {
+  const now = new Date();
+  const diffMs = deadline.getTime() - now.getTime();
+  if (diffMs <= 0) return "Voting ended";
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const remainHours = hours % 24;
+    return `${days}d ${remainHours}h left`;
+  }
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  return `${hours}h ${minutes}m left`;
 }

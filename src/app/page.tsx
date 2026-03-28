@@ -135,13 +135,17 @@ export default function Home() {
 
   const handleReportClick = useCallback(() => {
     if (mode === "idle") {
+      if (!user) {
+        setShowAuthModal(true);
+        return;
+      }
       setMode("selecting");
     } else {
       setMode("idle");
       setSelectedCategory(null);
       setPendingLocation(null);
     }
-  }, [mode]);
+  }, [mode, user]);
 
   const handleCategorySelect = useCallback((category: Category) => {
     setSelectedCategory(category);

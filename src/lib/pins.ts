@@ -113,6 +113,120 @@ export async function resolvePin(
   return mapRowToPin(data);
 }
 
+/** Watcher marks a pin as pending resolution (triggers 3-day voting) */
+export async function markPendingResolution(
+  pinId: string,
+  proofPhotoDataUrl: string,
+  userId: string
+): Promise<Pin> {
+  const resolvedPhotoUrl = await uploadPhoto(proofPhotoDataUrl, "resolved");
+
+  const { data, error } = await supabase
+    .from("pins")
+    .update({
+      status: "pending_resolved",
+      resolved_photo_url: resolvedPhotoUrl,
+      pending_resolved_at: new Date().toISOString(),
+      pending_resolved_by: userId,
+    })
+    .eq("id", pinId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Mark pending failed: ${error.message}`);
+
+  return mapRowToPin(data);
+}
+
+/** Regular user requests community resolution by submitting proof photo */
+export async function requestCommunityResolution(
+  pinId: string,
+  proofPhotoDataUrl: string,
+  userId: string
+): Promise<Pin> {
+  const resolvedPhotoUrl = await uploadPhoto(proofPhotoDataUrl, "resolved");
+
+  const { data, error } = await supabase
+    .from("pins")
+    .update({
+      community_resolve_requested: true,
+      community_resolve_by: userId,
+      resolved_photo_url: resolvedPhotoUrl,
+    })
+    .eq("id", pinId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Community resolve request failed: ${error.message}`);
+
+  return mapRowToPin(data);
+}
+
+/** Watcher approves a community resolution request → starts 3-day voting */
+export async function approveCommunityResolution(
+  pinId: string,
+  watcherId: string
+): Promise<Pin> {
+  const { data, error } = await supabase
+    .from("pins")
+    .update({
+      status: "pending_resolved",
+      pending_resolved_at: new Date().toISOString(),
+      pending_resolved_by: watcherId,
+    })
+    .eq("id", pinId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Approve resolution failed: ${error.message}`);
+
+  return mapRowToPin(data);
+}
+
+/** Cast or update a vote on a pending pin */
+export async function castVote(
+  pinId: string,
+  userId: string,
+  vote: "up" | "down"
+): Promise<void> {
+  const { error } = await supabase
+    .from("votes")
+    .upsert(
+      { pin_id: pinId, user_id: userId, vote },
+      { onConflict: "pin_id,user_id" }
+    );
+
+  if (error) throw new Error(`Vote failed: ${error.message}`);
+}
+
+export interface VoteTally {
+  up: number;
+  down: number;
+  userVote: "up" | "down" | null;
+}
+
+/** Fetch vote counts and the current user's vote for a pin */
+export async function fetchVotes(
+  pinId: string,
+  userId?: string
+): Promise<VoteTally> {
+  const { data, error } = await supabase
+    .from("votes")
+    .select("vote, user_id")
+    .eq("pin_id", pinId);
+
+  if (error) throw new Error(`Fetch votes failed: ${error.message}`);
+
+  const votes = data ?? [];
+  return {
+    up: votes.filter((v) => v.vote === "up").length,
+    down: votes.filter((v) => v.vote === "down").length,
+    userVote: userId
+      ? (votes.find((v) => v.user_id === userId)?.vote as "up" | "down") ?? null
+      : null,
+  };
+}
+
 /** Get stats for a specific municipality from existing pins */
 export interface MunicipalityStats {
   municipality: string;
