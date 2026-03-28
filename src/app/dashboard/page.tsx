@@ -23,7 +23,13 @@ import {
   FaShieldAlt,
   FaCheckCircle,
   FaExclamationCircle,
+  FaFileAlt,
+  FaSpinner,
+  FaExclamationTriangle,
+  FaLightbulb,
+  FaTimes,
 } from "react-icons/fa";
+import type { MunicipalityReport } from "../../lib/insights/types";
 
 interface Place {
   name: string;
@@ -151,6 +157,12 @@ export default function DashboardPage() {
   const [pins, setPins] = useState<Pin[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
 
+  // Report generation
+  const [report, setReport] = useState<MunicipalityReport | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [showReport, setShowReport] = useState(true);
+
   // Load saved municipality from user metadata
   useEffect(() => {
     if (user?.user_metadata?.dashboard_municipality) {
@@ -172,6 +184,31 @@ export default function DashboardPage() {
       .then(([statsData, pinsData]) => {
         setStats(statsData);
         setPins(pinsData);
+
+        // Auto-generate report when data loads
+        if (statsData.total > 0) {
+          setReportLoading(true);
+          setReportError(null);
+          setReport(null);
+          setShowReport(true);
+
+          fetch("/api/report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ municipality }),
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("Report generation failed");
+              return res.json();
+            })
+            .then((data) => setReport(data.report))
+            .catch((err) =>
+              setReportError(
+                err instanceof Error ? err.message : "Failed to generate report"
+              )
+            )
+            .finally(() => setReportLoading(false));
+        }
       })
       .catch(() => {
         setStats(null);
@@ -635,6 +672,260 @@ export default function DashboardPage() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Report Panel */}
+            {showReport && (
+              <div
+                className={`rounded-2xl border p-5 ${borderColor} ${bgCard}`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <FaFileAlt
+                      size={12}
+                      className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"}
+                    />
+                    <p
+                      className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
+                    >
+                      AI-Generated Report
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowReport(false)}
+                    className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
+                      isDark
+                        ? "text-neutral-500 hover:bg-neutral-800 hover:text-white"
+                        : "text-neutral-400 hover:bg-neutral-100 hover:text-neutral-800"
+                    }`}
+                  >
+                    <FaTimes size={10} />
+                  </button>
+                </div>
+
+                {reportLoading && (
+                  <div className="flex flex-col items-center py-8 gap-3">
+                    <FaSpinner
+                      size={24}
+                      className={`animate-spin ${isDark ? "text-[#f5c542]" : "text-[#b8860b]"}`}
+                    />
+                    <p className={`text-xs ${textSecondary}`}>
+                      Analyzing {stats.total} reports for {stats.municipality}...
+                    </p>
+                  </div>
+                )}
+
+                {reportError && (
+                  <div
+                    className={`rounded-xl px-4 py-3 ${
+                      isDark
+                        ? "bg-red-950/30 border border-red-900/30"
+                        : "bg-red-50 border border-red-200/60"
+                    }`}
+                  >
+                    <p className="text-xs text-red-400">{reportError}</p>
+                  </div>
+                )}
+
+                {report && !reportLoading && (
+                  <div className="flex flex-col gap-5">
+                    {/* Overall Assessment */}
+                    <div>
+                      <p
+                        className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${textMuted}`}
+                      >
+                        Overall Assessment
+                      </p>
+                      <p
+                        className={`text-xs leading-relaxed whitespace-pre-line ${
+                          isDark ? "text-neutral-300" : "text-neutral-700"
+                        }`}
+                      >
+                        {report.overallAssessment}
+                      </p>
+                    </div>
+
+                    {/* Biggest Problems */}
+                    {report.biggestProblems?.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-3">
+                          <FaExclamationTriangle size={10} className="text-red-400" />
+                          <p
+                            className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
+                          >
+                            Biggest Problems
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {report.biggestProblems.map((problem, i) => (
+                            <div
+                              key={i}
+                              className={`rounded-xl px-4 py-3 border ${
+                                problem.severity === "critical"
+                                  ? isDark
+                                    ? "bg-red-950/20 border-red-900/30"
+                                    : "bg-red-50 border-red-200/60"
+                                  : problem.severity === "warning"
+                                    ? isDark
+                                      ? "bg-amber-950/20 border-amber-900/30"
+                                      : "bg-amber-50 border-amber-200/60"
+                                    : isDark
+                                      ? "bg-neutral-800/40 border-neutral-700/50"
+                                      : "bg-neutral-50 border-neutral-200"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span
+                                  className={`text-xs font-semibold ${textPrimary}`}
+                                >
+                                  {problem.issue}
+                                </span>
+                                <span
+                                  className={`text-[9px] font-semibold uppercase px-2 py-0.5 rounded-full ${
+                                    problem.severity === "critical"
+                                      ? "bg-red-500/15 text-red-400"
+                                      : problem.severity === "warning"
+                                        ? "bg-amber-500/15 text-amber-400"
+                                        : "bg-blue-500/15 text-blue-400"
+                                  }`}
+                                >
+                                  {problem.severity}
+                                </span>
+                              </div>
+                              <p className={`text-[11px] leading-relaxed ${textSecondary}`}>
+                                {problem.explanation}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Location Hotspots */}
+                    {report.locationHotspots?.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-3">
+                          <FaMapMarkerAlt size={10} className="text-amber-400" />
+                          <p
+                            className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
+                          >
+                            Location Hotspots
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {report.locationHotspots.map((hotspot, i) => (
+                            <div
+                              key={i}
+                              className={`rounded-xl px-4 py-3 ${
+                                isDark ? "bg-neutral-800/40" : "bg-neutral-50"
+                              }`}
+                            >
+                              <p
+                                className={`text-xs font-semibold mb-0.5 ${textPrimary}`}
+                              >
+                                {hotspot.area}
+                              </p>
+                              <p className={`text-[11px] mb-1 ${textSecondary}`}>
+                                {hotspot.concern}
+                              </p>
+                              <p
+                                className={`text-[11px] italic ${
+                                  isDark ? "text-[#f5c542]/70" : "text-[#b8860b]/70"
+                                }`}
+                              >
+                                {hotspot.recommendation}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Congestion Analysis */}
+                    {report.congestionAnalysis && (
+                      <div>
+                        <p
+                          className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${textMuted}`}
+                        >
+                          Congestion & Pattern Analysis
+                        </p>
+                        <p
+                          className={`text-xs leading-relaxed ${
+                            isDark ? "text-neutral-300" : "text-neutral-700"
+                          }`}
+                        >
+                          {report.congestionAnalysis}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Resolution Performance */}
+                    {report.resolutionPerformance && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <FaCheckCircle size={10} className="text-green-400" />
+                          <p
+                            className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
+                          >
+                            Resolution Performance
+                          </p>
+                        </div>
+                        <p
+                          className={`text-xs leading-relaxed ${
+                            isDark ? "text-neutral-300" : "text-neutral-700"
+                          }`}
+                        >
+                          {report.resolutionPerformance}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {report.recommendations?.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-3">
+                          <FaLightbulb size={10} className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"} />
+                          <p
+                            className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
+                          >
+                            Recommendations
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {report.recommendations.map((rec, i) => (
+                            <div
+                              key={i}
+                              className={`flex gap-3 rounded-xl px-4 py-3 ${
+                                isDark ? "bg-neutral-800/40" : "bg-neutral-50"
+                              }`}
+                            >
+                              <span
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                                  isDark
+                                    ? "bg-[#f5c542]/15 text-[#f5c542]"
+                                    : "bg-[#b8860b]/15 text-[#b8860b]"
+                                }`}
+                              >
+                                {rec.priority}
+                              </span>
+                              <div>
+                                <p
+                                  className={`text-xs font-semibold ${textPrimary}`}
+                                >
+                                  {rec.action}
+                                </p>
+                                <p className={`text-[11px] mt-0.5 ${textSecondary}`}>
+                                  {rec.rationale}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

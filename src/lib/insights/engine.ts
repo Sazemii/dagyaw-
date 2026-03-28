@@ -1,7 +1,7 @@
-import type { Insight, InsightContext, InsightSeverity } from "./types";
+import type { Insight, InsightContext, InsightSeverity, MunicipalityReportInput, MunicipalityReport } from "./types";
 import { fetchWeather, fetchRainForecast, fetchAirQuality, fetchFloodRisk, detectAbnormalEmissions } from "./external-apis";
 import { getFloodZonesForPoint, getFloodZonesNearPoint } from "../../data/flood-zones";
-import { buildWasteFloodPrompt, buildCarbonEmissionPrompt } from "./prompts";
+import { buildWasteFloodPrompt, buildCarbonEmissionPrompt, buildMunicipalityReportPrompt } from "./prompts";
 
 const WASTE_CATEGORIES = [
   "illegal-dumping",
@@ -274,4 +274,52 @@ function buildFallbackCarbonInsight(
     lng,
     municipality,
   };
+}
+
+/**
+ * Generate a comprehensive municipality report using Groq LLM.
+ * Aggregates all pin data and produces an analytical report for community watchers.
+ */
+export async function generateMunicipalityReport(
+  input: MunicipalityReportInput
+): Promise<MunicipalityReport> {
+  const prompt = buildMunicipalityReportPrompt(input);
+
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY not set");
+  }
+
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a professional urban sustainability analyst writing reports for local government officials in the Philippines. Respond only with valid JSON, no markdown formatting.",
+        },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.4,
+      max_tokens: 2000,
+      response_format: { type: "json_object" },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Groq API failed (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error("Empty response from Groq");
+
+  return JSON.parse(content) as MunicipalityReport;
 }

@@ -1,4 +1,4 @@
-import type { InsightContext } from "./types";
+import type { InsightContext, MunicipalityReportInput } from "./types";
 
 export function buildWasteFloodPrompt(
   categoryId: string,
@@ -121,5 +121,74 @@ Respond ONLY with valid JSON (no markdown, no backticks):
   "recommendation": "what should the authorities/admin investigate or do",
   "citizenTip": "health advisory for citizens in the area",
   "riskFactors": ["factor1", "factor2"]
+}`;
+}
+
+export function buildMunicipalityReportPrompt(
+  input: MunicipalityReportInput
+): string {
+  const categoryList = input.categoryBreakdown
+    .map((c) => `- ${c.label}: ${c.count} reports (${c.percentage}%)`)
+    .join("\n");
+
+  const recentList = input.recentDescriptions
+    .slice(0, 15)
+    .map(
+      (r) =>
+        `- [${r.category}] (${r.status}) "${r.description}" (${r.createdAt})`
+    )
+    .join("\n");
+
+  const clusterList =
+    input.locationClusters.length > 0
+      ? input.locationClusters
+          .map(
+            (c) =>
+              `- ${c.area}: ${c.count} reports — top issues: ${c.topCategories.join(", ")}`
+          )
+          .join("\n")
+      : "No significant location clusters detected.";
+
+  return `You are an AI urban sustainability analyst for Bayanihan, a community-driven platform in the Philippines. Generate a comprehensive municipality report for a Community Watcher (LGU staff).
+
+MUNICIPALITY: ${input.municipality}
+
+REPORT STATISTICS:
+- Total reports: ${input.total}
+- Active (unresolved): ${input.active}
+- Resolved: ${input.resolved}
+- Resolution rate: ${input.resolutionRate}%
+
+CATEGORY BREAKDOWN:
+${categoryList}
+
+LOCATION CLUSTERS (areas with concentrated reports):
+${clusterList}
+
+RECENT CITIZEN REPORTS (sample):
+${recentList}
+
+Generate a detailed analytical report covering:
+1. Overall assessment of urban sustainability in this municipality
+2. The biggest problem areas — which categories are most alarming and why
+3. Location hotspots — where problems concentrate and what that means
+4. Congestion analysis — whether reports indicate systemic issues (e.g. recurring flooding, waste buildup in the same areas)
+5. Resolution performance — is the municipality keeping up with reports?
+6. Prioritized actionable recommendations for the LGU
+
+Respond ONLY with valid JSON (no markdown, no backticks):
+{
+  "overallAssessment": "2-3 paragraph overview of the municipality's urban sustainability status, written professionally for LGU officials",
+  "biggestProblems": [
+    { "issue": "name of issue", "severity": "critical|warning|info", "explanation": "why this is a major concern" }
+  ],
+  "locationHotspots": [
+    { "area": "area description", "concern": "what's happening there", "recommendation": "what to do" }
+  ],
+  "congestionAnalysis": "paragraph analyzing patterns — recurring issues, systemic problems, whether certain areas are chronically neglected",
+  "resolutionPerformance": "paragraph assessing how well the municipality handles reports — speed, coverage, gaps",
+  "recommendations": [
+    { "priority": 1, "action": "specific action", "rationale": "why this should be done first" }
+  ]
 }`;
 }

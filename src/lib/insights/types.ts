@@ -80,6 +80,26 @@ export interface Insight {
   createdAt?: string;
 }
 
+export interface MunicipalityReportInput {
+  municipality: string;
+  total: number;
+  active: number;
+  resolved: number;
+  resolutionRate: number;
+  categoryBreakdown: { categoryId: string; label: string; count: number; percentage: number }[];
+  recentDescriptions: { category: string; description: string; status: string; createdAt: string }[];
+  locationClusters: { area: string; count: number; topCategories: string[] }[];
+}
+
+export interface MunicipalityReport {
+  overallAssessment: string;
+  biggestProblems: { issue: string; severity: string; explanation: string }[];
+  locationHotspots: { area: string; concern: string; recommendation: string }[];
+  congestionAnalysis: string;
+  resolutionPerformance: string;
+  recommendations: { priority: number; action: string; rationale: string }[];
+}
+
 export interface AirQualityAlert {
   level: "good" | "moderate" | "unhealthy_sensitive" | "unhealthy" | "very_unhealthy" | "hazardous";
   aqi: number;
