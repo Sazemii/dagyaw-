@@ -10,7 +10,7 @@ import Map, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getCategoryById } from "./categories";
 import CategoryIcon from "./CategoryIcon";
-import UserLocationTracker from "./UserLocationTracker";
+import UserLocationTracker, { type LocationStatus } from "./UserLocationTracker";
 import { useTheme } from "./ThemeContext";
 
 // --- Types ---
@@ -29,7 +29,8 @@ interface MapViewProps {
   onMapClick?: (lat: number, lng: number) => void;
   onPinClick?: (pin: Pin) => void;
   isPlacingPin: boolean;
-  permissionRequested: boolean;
+  locateTrigger: number;
+  onLocationStatus: (status: LocationStatus) => void;
 }
 
 const CARTO_DARK_STYLE =
@@ -93,7 +94,8 @@ export default function MapView({
   onMapClick,
   onPinClick,
   isPlacingPin,
-  permissionRequested,
+  locateTrigger,
+  onLocationStatus,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const theme = useTheme();
@@ -218,7 +220,7 @@ export default function MapView({
       attributionControl={{}}
     >
       <NavigationControl position="bottom-right" showCompass={false} />
-      <UserLocationTracker permissionRequested={permissionRequested} />
+      <UserLocationTracker locateTrigger={locateTrigger} onLocationStatus={onLocationStatus} />
       {pins.map((pin) => (
         <PinMarker key={pin.id} pin={pin} onClick={onPinClick} />
       ))}

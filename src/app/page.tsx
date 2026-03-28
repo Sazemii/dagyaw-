@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 import type { Pin } from "../components/MapView";
 import type { Category } from "../components/categories";
+import type { LocationStatus } from "../components/UserLocationTracker";
 import { ThemeContext, type Theme } from "../components/ThemeContext";
 import StatusBar from "../components/StatusBar";
 import ReportButton from "../components/ReportButton";
@@ -25,7 +26,8 @@ export default function Home() {
   const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [viewingPin, setViewingPin] = useState<Pin | null>(null);
   const [theme, setTheme] = useState<Theme>("dark");
-  const [permissionRequested, setPermissionRequested] = useState(false);
+  const [locateTrigger, setLocateTrigger] = useState(0);
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
 
   const isDark = theme === "dark";
 
@@ -86,9 +88,11 @@ export default function Home() {
   }, []);
 
   const handleLocate = useCallback(() => {
-    // Trigger permission request (needed for iOS DeviceOrientation)
-    // This must happen from a user gesture
-    setPermissionRequested(true);
+    setLocateTrigger((n) => n + 1);
+  }, []);
+
+  const handleLocationStatus = useCallback((status: LocationStatus) => {
+    setLocationStatus(status);
   }, []);
 
   return (
@@ -103,7 +107,8 @@ export default function Home() {
           onMapClick={handleMapClick}
           onPinClick={handlePinClick}
           isPlacingPin={mode === "placing"}
-          permissionRequested={permissionRequested}
+          locateTrigger={locateTrigger}
+          onLocationStatus={handleLocationStatus}
         />
 
         {/* Vignette */}
@@ -124,7 +129,7 @@ export default function Home() {
         <StatusBar pins={pins} />
 
         {/* Locate me button */}
-        <LocateButton onClick={handleLocate} />
+        <LocateButton onClick={handleLocate} status={locationStatus} />
 
         <ReportButton
           isActive={mode !== "idle"}

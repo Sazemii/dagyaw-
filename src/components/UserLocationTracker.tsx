@@ -3,6 +3,14 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useMap } from "react-map-gl/maplibre";
 
+export type LocationStatus =
+  | "idle"
+  | "requesting"
+  | "active"
+  | "denied"
+  | "unavailable"
+  | "error";
+
 const USER_COLOR = "#f5c542";
 const USER_COLOR_RGB = "245, 197, 66";
 const CONE_RADIUS = 160;
@@ -11,9 +19,7 @@ const DOT_SIZE = 20;
 const SVG_SIZE = CONE_RADIUS * 2 + DOT_SIZE;
 const CENTER = SVG_SIZE / 2;
 
-// Pre-build the static parts of the SVG (cone shape at 0 degrees, rotated via CSS)
 function buildStaticSVG(): string {
-  // Cone pointing UP (north = -90deg in SVG coords) at heading=0
   const startRad = ((-CONE_ANGLE / 2 - 90) * Math.PI) / 180;
   const endRad = ((CONE_ANGLE / 2 - 90) * Math.PI) / 180;
   const x1 = CENTER + CONE_RADIUS * Math.cos(startRad);
@@ -69,7 +75,6 @@ function buildStaticSVG(): string {
   `;
 }
 
-// Request DeviceOrientation permission (required on iOS 13+)
 async function requestOrientationPermission(): Promise<boolean> {
   const DOE = DeviceOrientationEvent as unknown as {
     requestPermission?: () => Promise<"granted" | "denied">;
@@ -82,15 +87,18 @@ async function requestOrientationPermission(): Promise<boolean> {
       return false;
     }
   }
-  // Android / desktop — no permission needed
   return true;
 }
 
 interface UserLocationTrackerProps {
-  permissionRequested: boolean;
+  locateTrigger: number;
+  onLocationStatus: (status: LocationStatus) => void;
 }
 
-export default function UserLocationTracker({ permissionRequested }: UserLocationTrackerProps) {
+export default function UserLocationTracker({
+  locateTrigger,
+  onLocationStatus,
+}: UserLocationTrackerProps) {
   const { current: mapInstance } = useMap();
   const markerElRef = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -98,24 +106,32 @@ export default function UserLocationTracker({ permissionRequested }: UserLocatio
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
   const firstFixRef = useRef(true);
   const orientationBoundRef = useRef(false);
-  const svgBuilt = useRef(false);
+  const watchIdRef = useRef<number | null>(null);
+  const statusRef = useRef<LocationStatus>("idle");
 
-  // Apply heading rotation via CSS (no SVG rebuild)
+  const setStatus = useCallback(
+    (s: LocationStatus) => {
+      statusRef.current = s;
+      onLocationStatus(s);
+    },
+    [onLocationStatus],
+  );
+
   const applyRotation = useCallback(() => {
     if (!markerElRef.current) return;
-    const svg = markerElRef.current.querySelector(".gps-icon-svg") as SVGElement | null;
+    const svg = markerElRef.current.querySelector(
+      ".gps-icon-svg",
+    ) as SVGElement | null;
     if (svg) {
       svg.style.transform = `rotate(${headingRef.current}deg)`;
     }
   }, []);
 
-  // Update marker position on map
   const updatePosition = useCallback(() => {
     if (!posRef.current || !markerRef.current) return;
     markerRef.current.setLngLat([posRef.current.lng, posRef.current.lat]);
   }, []);
 
-  // Bind orientation listeners
   const bindOrientation = useCallback(() => {
     if (orientationBoundRef.current) return;
     orientationBoundRef.current = true;
@@ -124,11 +140,11 @@ export default function UserLocationTracker({ permissionRequested }: UserLocatio
       let heading: number | null = null;
 
       if ("webkitCompassHeading" in e) {
-        heading = (e as DeviceOrientationEvent & { webkitCompassHeading: number })
-          .webkitCompassHeading;
+        heading = (
+          e as DeviceOrientationEvent & { webkitCompassHeading: number }
+        ).webkitCompassHeading;
       } else if (e.alpha != null) {
-        // Android: alpha is degrees from north
-        heading = e.absolute ? (360 - e.alpha) % 360 : (360 - e.alpha) % 360;
+        heading = (360 - e.alpha) % 360;
       }
 
       if (heading != null && !isNaN(heading)) {
@@ -137,79 +153,94 @@ export default function UserLocationTracker({ permissionRequested }: UserLocatio
       }
     }
 
-    // Prefer absolute orientation
-    window.addEventListener("deviceorientationabsolute", handleOrientation as EventListener, true);
-    window.addEventListener("deviceorientation", handleOrientation as EventListener);
+    window.addEventListener(
+      "deviceorientationabsolute",
+      handleOrientation as EventListener,
+      true,
+    );
+    window.addEventListener(
+      "deviceorientation",
+      handleOrientation as EventListener,
+    );
 
     return () => {
-      window.removeEventListener("deviceorientationabsolute", handleOrientation as EventListener, true);
-      window.removeEventListener("deviceorientation", handleOrientation as EventListener);
+      window.removeEventListener(
+        "deviceorientationabsolute",
+        handleOrientation as EventListener,
+        true,
+      );
+      window.removeEventListener(
+        "deviceorientation",
+        handleOrientation as EventListener,
+      );
       orientationBoundRef.current = false;
     };
   }, [applyRotation]);
 
-  // When permission is requested, set up orientation
-  useEffect(() => {
-    if (!permissionRequested) return;
-
-    let cleanup: (() => void) | undefined;
-
-    requestOrientationPermission().then((granted) => {
-      if (granted) {
-        cleanup = bindOrientation();
-      }
+  const flyToUser = useCallback(() => {
+    if (!posRef.current || !mapInstance) return;
+    const map = mapInstance.getMap();
+    map.flyTo({
+      center: [posRef.current.lng, posRef.current.lat],
+      zoom: Math.max(map.getZoom(), 16),
+      duration: 1200,
     });
+  }, [mapInstance]);
 
-    return () => cleanup?.();
-  }, [permissionRequested, bindOrientation]);
-
-  // Main geolocation + marker effect
-  useEffect(() => {
-    if (!mapInstance || !navigator.geolocation) return;
+  // Start GPS watching — called from the effect triggered by locateTrigger
+  const startWatching = useCallback(() => {
+    if (!mapInstance) return;
+    if (!navigator.geolocation) {
+      setStatus("unavailable");
+      return;
+    }
+    if (watchIdRef.current != null) return; // already watching
 
     const map = mapInstance.getMap();
 
-    // Create marker element once
+    // Build marker
     const el = document.createElement("div");
     el.className = "user-location-icon";
     el.innerHTML = buildStaticSVG();
     markerElRef.current = el;
-    svgBuilt.current = true;
 
-    let marker: maplibregl.Marker | null = null;
-    let cleanupOrientation: (() => void) | undefined;
+    setStatus("requesting");
 
-    // Create MapLibre marker
     import("maplibre-gl").then((mgl) => {
-      marker = new mgl.Marker({ element: el })
-        .setLngLat([120.9842, 14.5995]) // default, will update
+      const marker = new mgl.Marker({ element: el })
+        .setLngLat([0, 0])
         .addTo(map);
       markerRef.current = marker;
 
-      // If position already arrived, apply it
       if (posRef.current) {
         updatePosition();
       }
 
-      // Try binding orientation immediately (works on Android without permission)
-      cleanupOrientation = bindOrientation();
+      // Orientation (works immediately on Android, needs permission on iOS — handled below)
+      bindOrientation();
     });
 
-    // Watch GPS position
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
         posRef.current = { lat: latitude, lng: longitude };
 
-        // Use GPS heading when moving
-        if (pos.coords.heading != null && !isNaN(pos.coords.heading) && pos.coords.speed && pos.coords.speed > 0.5) {
+        if (
+          pos.coords.heading != null &&
+          !isNaN(pos.coords.heading) &&
+          pos.coords.speed &&
+          pos.coords.speed > 0.5
+        ) {
           headingRef.current = pos.coords.heading;
           applyRotation();
         }
 
         updatePosition();
 
-        // Fly to user on first fix
+        if (statusRef.current !== "active") {
+          setStatus("active");
+        }
+
         if (firstFixRef.current) {
           firstFixRef.current = false;
           map.flyTo({
@@ -219,21 +250,61 @@ export default function UserLocationTracker({ permissionRequested }: UserLocatio
           });
         }
       },
-      (err) => console.warn("Geolocation error:", err.message),
+      (err) => {
+        console.warn("Geolocation error:", err.code, err.message);
+        if (err.code === 1) {
+          setStatus("denied");
+        } else if (err.code === 2) {
+          setStatus("unavailable");
+        } else {
+          setStatus("error");
+        }
+      },
       {
         enableHighAccuracy: true,
-        maximumAge: 1000,
-        timeout: 15000,
-      }
+        maximumAge: 2000,
+        timeout: 20000,
+      },
     );
 
+    watchIdRef.current = watchId;
+
+    // Request iOS DeviceOrientation permission (must be from user gesture context)
+    requestOrientationPermission().then((granted) => {
+      if (granted) {
+        bindOrientation();
+      }
+    });
+  }, [
+    mapInstance,
+    setStatus,
+    updatePosition,
+    applyRotation,
+    bindOrientation,
+  ]);
+
+  // React to locateTrigger changes
+  useEffect(() => {
+    if (locateTrigger <= 0) return;
+
+    if (watchIdRef.current == null) {
+      startWatching();
+    } else {
+      flyToUser();
+    }
+  }, [locateTrigger, startWatching, flyToUser]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      navigator.geolocation.clearWatch(watchId);
-      cleanupOrientation?.();
-      marker?.remove();
+      if (watchIdRef.current != null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      markerRef.current?.remove();
       markerRef.current = null;
     };
-  }, [mapInstance, updatePosition, applyRotation, bindOrientation]);
+  }, []);
 
   return null;
 }
