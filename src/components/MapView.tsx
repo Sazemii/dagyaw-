@@ -20,8 +20,12 @@ export interface Pin {
   lng: number;
   categoryId: string;
   description: string;
-  photoDataUrl: string;
-  createdAt: Date;
+  photoUrl: string;
+  status: "active" | "resolved";
+  resolvedPhotoUrl?: string;
+  resolvedComment?: string;
+  resolvedAt?: string;
+  createdAt: string;
 }
 
 interface MapViewProps {
@@ -44,7 +48,13 @@ function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void })
   const theme = useTheme();
   if (!category) return null;
 
-  const circleFill = theme === "dark" ? "#1a1a1a" : "#ffffff";
+  const isResolved = pin.status === "resolved";
+  const circleFill = isResolved
+    ? "#d1fae5"
+    : theme === "dark"
+      ? "#1a1a1a"
+      : "#ffffff";
+  const strokeColor = isResolved ? "#22c55e" : category.color;
 
   return (
     <Marker longitude={pin.lng} latitude={pin.lat} anchor="bottom">
@@ -56,13 +66,13 @@ function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void })
           fill="none"
           className="pin-drop"
         >
-          <polygon points="14,34 26,34 20,50" fill={category.color} />
+          <polygon points="14,34 26,34 20,50" fill={strokeColor} />
           <circle
             cx="20"
             cy="19"
             r="17"
             fill={circleFill}
-            stroke={category.color}
+            stroke={strokeColor}
             strokeWidth="2.5"
           />
           <foreignObject x="8" y="7" width="24" height="24">

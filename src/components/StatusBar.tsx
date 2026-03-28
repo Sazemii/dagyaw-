@@ -11,6 +11,9 @@ export default function StatusBar({ pins }: StatusBarProps) {
   const theme = useTheme();
   const isDark = theme === "dark";
 
+  const activeCount = pins.filter((p) => p.status === "active").length;
+  const resolvedCount = pins.filter((p) => p.status === "resolved").length;
+
   return (
     <div className="fixed left-1/2 top-4 z-[1000] -translate-x-1/2">
       <div
@@ -41,18 +44,7 @@ export default function StatusBar({ pins }: StatusBarProps) {
             <span
               className={`font-semibold ${isDark ? "text-white" : "text-neutral-900"}`}
             >
-              {pins.length}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-yellow-500" />
-            <span className={isDark ? "text-neutral-400" : "text-neutral-500"}>
-              Pending
-            </span>
-            <span
-              className={`font-semibold ${isDark ? "text-white" : "text-neutral-900"}`}
-            >
-              0
+              {activeCount}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -63,7 +55,7 @@ export default function StatusBar({ pins }: StatusBarProps) {
             <span
               className={`font-semibold ${isDark ? "text-white" : "text-neutral-900"}`}
             >
-              0
+              {resolvedCount}
             </span>
           </div>
         </div>

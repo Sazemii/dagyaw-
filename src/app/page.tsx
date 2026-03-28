@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Pin } from "../components/MapView";
 import type { Category } from "../components/categories";
+import { fetchPins, createPin, resolvePin } from "../lib/pins";
 import type { LocationStatus } from "../components/UserLocationTracker";
 import { ThemeContext, type Theme } from "../components/ThemeContext";
 import StatusBar from "../components/StatusBar";
@@ -31,6 +32,13 @@ export default function Home() {
 
   const isDark = theme === "dark";
 
+  // Load pins from Supabase on mount
+  useEffect(() => {
+    fetchPins()
+      .then(setPins)
+      .catch((err) => console.error("Failed to load pins:", err));
+  }, []);
+
   const handleReportClick = useCallback(() => {
     if (mode === "idle") {
       setMode("selecting");
@@ -56,20 +64,23 @@ export default function Home() {
   );
 
   const handleReportSubmit = useCallback(
-    (description: string, photoDataUrl: string) => {
+    async (description: string, photoDataUrl: string) => {
       if (!pendingLocation || !selectedCategory) return;
 
-      const newPin: Pin = {
-        id: `pin-${Date.now()}`,
-        lat: pendingLocation.lat,
-        lng: pendingLocation.lng,
-        categoryId: selectedCategory.id,
-        description,
-        photoDataUrl,
-        createdAt: new Date(),
-      };
+      try {
+        const newPin = await createPin({
+          lat: pendingLocation.lat,
+          lng: pendingLocation.lng,
+          categoryId: selectedCategory.id,
+          description,
+          photoDataUrl,
+        });
+        setPins((prev) => [newPin, ...prev]);
+      } catch (err) {
+        console.error("Failed to create pin:", err);
+        alert("Failed to submit report. Please try again.");
+      }
 
-      setPins((prev) => [...prev, newPin]);
       setMode("idle");
       setSelectedCategory(null);
       setPendingLocation(null);
@@ -80,6 +91,20 @@ export default function Home() {
   const handlePinClick = useCallback((pin: Pin) => {
     setViewingPin(pin);
   }, []);
+
+  const handleResolvePin = useCallback(
+    async (pinId: string, comment: string, proofPhotoDataUrl: string) => {
+      try {
+        const updated = await resolvePin(pinId, comment, proofPhotoDataUrl);
+        setPins((prev) => prev.map((p) => (p.id === pinId ? updated : p)));
+        setViewingPin(null);
+      } catch (err) {
+        console.error("Failed to resolve pin:", err);
+        alert("Failed to resolve. Please try again.");
+      }
+    },
+    []
+  );
 
   const handleCancel = useCallback(() => {
     setMode("idle");
@@ -159,6 +184,7 @@ export default function Home() {
           <PinDetailModal
             pin={viewingPin}
             onClose={() => setViewingPin(null)}
+            onResolve={handleResolvePin}
           />
         )}
       </main>
