@@ -122,6 +122,15 @@ export const CATEGORIES: Category[] = [
     group: "Urban Environment",
     severity: 2,
   },
+  {
+    id: "carbon-emission",
+    label: "Carbon / GHG Emission",
+    icon: "FaSmog",
+    color: "#92400e", // brown
+    sdg: 13,
+    group: "Waste & Pollution",
+    severity: 4,
+  },
 ];
 
 export const CATEGORY_GROUPS = [...new Set(CATEGORIES.map((c) => c.group))];

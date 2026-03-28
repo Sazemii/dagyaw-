@@ -17,6 +17,7 @@
     "@types/leaflet": "^1.9.21",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
+    "groq-sdk": "^1.1.2",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^5.21.1",
     "next": "^16.2.1",

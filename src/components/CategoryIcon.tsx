@@ -13,6 +13,7 @@ import {
   FaExclamationTriangle,
   FaVolumeUp,
   FaDog,
+  FaSmog,
 } from "react-icons/fa";
 import type { IconType } from "react-icons";
 
@@ -29,6 +30,7 @@ const ICON_MAP: Record<string, IconType> = {
   FaExclamationTriangle,
   FaVolumeUp,
   FaDog,
+  FaSmog,
 };
 
 interface CategoryIconProps {

@@ -205,6 +205,23 @@ body {
   animation: stat-reveal 0.5s ease-out forwards;
 }
 
+/* ===== Insight marker pulse ===== */
+.insight-pulse {
+  animation: insight-ring 2s ease-out infinite;
+  transform-origin: center;
+}
+
+@keyframes insight-ring {
+  0% {
+    r: 13;
+    stroke-opacity: 0.4;
+  }
+  100% {
+    r: 22;
+    stroke-opacity: 0;
+  }
+}
+
 /* ===== Scrollbar ===== */
 ::-webkit-scrollbar {
   width: 6px;

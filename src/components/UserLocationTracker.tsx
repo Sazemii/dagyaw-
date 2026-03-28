@@ -93,11 +93,13 @@ async function requestOrientationPermission(): Promise<boolean> {
 interface UserLocationTrackerProps {
   locateTrigger: number;
   onLocationStatus: (status: LocationStatus) => void;
+  onLocation?: (lat: number, lng: number) => void;
 }
 
 export default function UserLocationTracker({
   locateTrigger,
   onLocationStatus,
+  onLocation,
 }: UserLocationTrackerProps) {
   const { current: mapInstance } = useMap();
   const markerElRef = useRef<HTMLDivElement | null>(null);
@@ -264,6 +266,7 @@ export default function UserLocationTracker({
       (pos) => {
         const { latitude, longitude } = pos.coords;
         posRef.current = { lat: latitude, lng: longitude };
+        onLocation?.(latitude, longitude);
 
         if (
           pos.coords.heading != null &&
@@ -315,7 +318,7 @@ export default function UserLocationTracker({
         bindOrientation();
       }
     });
-  }, [mapInstance, setStatus, updatePosition, applyRotation, bindOrientation]);
+  }, [mapInstance, setStatus, updatePosition, applyRotation, bindOrientation, onLocation]);
 
   // React to locateTrigger changes
   useEffect(() => {
