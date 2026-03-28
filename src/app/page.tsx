@@ -133,6 +133,11 @@ function HomePage() {
     []
   );
 
+  const handlePinUpdate = useCallback((updated: Pin) => {
+    setPins((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setViewingPin(updated);
+  }, []);
+
   const handleCancel = useCallback(() => {
     setMode("idle");
     setSelectedCategory(null);
@@ -370,6 +375,7 @@ function HomePage() {
             pin={viewingPin}
             onClose={() => setViewingPin(null)}
             onResolve={handleResolvePin}
+            onPinUpdate={handlePinUpdate}
           />
         )}
 

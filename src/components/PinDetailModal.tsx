@@ -1,50 +1,143 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
-import { FaTimes, FaCamera, FaCheck, FaCheckCircle } from "react-icons/fa";
+import { useEffect, useState, useCallback } from "react";
+import {
+  FaTimes,
+  FaCheckCircle,
+  FaThumbsUp,
+  FaThumbsDown,
+  FaClock,
+  FaHandsHelping,
+  FaGavel,
+} from "react-icons/fa";
 import type { Pin } from "./MapView";
 import { getCategoryById } from "./categories";
 import CategoryIcon from "./CategoryIcon";
 import { useTheme } from "./ThemeContext";
+import { useAuth } from "./AuthContext";
+import {
+  markPendingResolved,
+  requestCommunityResolve,
+  approveCommunityResolve,
+  rejectCommunityResolve,
+  castVote,
+  getVotes,
+  type VoteTally,
+} from "../lib/pins";
 
 interface PinDetailModalProps {
   pin: Pin;
   onClose: () => void;
   onResolve: (pinId: string, comment: string, proofPhotoDataUrl: string) => void;
+  /** Called when pin state changes (pending resolve, vote, community resolve, etc.) */
+  onPinUpdate?: (updated: Pin) => void;
 }
 
-export default function PinDetailModal({ pin, onClose, onResolve }: PinDetailModalProps) {
+export default function PinDetailModal({
+  pin,
+  onClose,
+  onPinUpdate,
+}: PinDetailModalProps) {
   const theme = useTheme();
   const isDark = theme === "dark";
+  const { user, profile } = useAuth();
   const category = getCategoryById(pin.categoryId);
 
-  const [showResolveForm, setShowResolveForm] = useState(false);
-  const [resolvePhoto, setResolvePhoto] = useState<string | null>(null);
-  const [resolveComment, setResolveComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [votes, setVotes] = useState<VoteTally | null>(null);
+
+  const isLoggedIn = !!user;
+  const isInstitutional =
+    (profile?.role === "institutional" || profile?.role === "admin") &&
+    profile?.roleStatus === "active";
+  const isResolved = pin.status === "resolved";
+  const isPending = pin.status === "pending_resolved";
+  const hasCommunityRequest = pin.communityResolveRequested && pin.status === "active";
+
+  // Load votes for pending pins
+  useEffect(() => {
+    if (isPending) {
+      getVotes(pin.id, user?.id).then(setVotes).catch(() => {});
+    }
+  }, [isPending, pin.id, user?.id]);
+
+  // Time remaining for pending resolved
+  const timeRemaining = isPending && pin.pendingResolvedAt
+    ? getTimeRemaining(pin.pendingResolvedAt)
+    : null;
+
+  const handleMarkPending = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const updated = await markPendingResolved(pin.id, user.id);
+      onPinUpdate?.(updated);
+    } catch (err) {
+      console.error("Failed to mark pending resolved:", err);
+      alert("Failed to mark as pending resolved.");
+    } finally {
+      setLoading(false);
+    }
+  }, [pin.id, user, onPinUpdate]);
+
+  const handleCommunityResolve = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const updated = await requestCommunityResolve(pin.id, user.id);
+      onPinUpdate?.(updated);
+    } catch (err) {
+      console.error("Failed to request community resolve:", err);
+      alert("Failed to submit community resolve request.");
+    } finally {
+      setLoading(false);
+    }
+  }, [pin.id, user, onPinUpdate]);
+
+  const handleApproveCommunity = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const updated = await approveCommunityResolve(pin.id, user.id);
+      onPinUpdate?.(updated);
+    } catch (err) {
+      console.error("Failed to approve community resolve:", err);
+      alert("Failed to approve.");
+    } finally {
+      setLoading(false);
+    }
+  }, [pin.id, user, onPinUpdate]);
+
+  const handleRejectCommunity = useCallback(async () => {
+    setLoading(true);
+    try {
+      const updated = await rejectCommunityResolve(pin.id);
+      onPinUpdate?.(updated);
+    } catch (err) {
+      console.error("Failed to reject community resolve:", err);
+      alert("Failed to reject.");
+    } finally {
+      setLoading(false);
+    }
+  }, [pin.id, onPinUpdate]);
+
+  const handleVote = useCallback(
+    async (vote: "up" | "down") => {
+      if (!user) return;
+      try {
+        await castVote(pin.id, user.id, vote);
+        const updated = await getVotes(pin.id, user.id);
+        setVotes(updated);
+      } catch (err) {
+        console.error("Failed to vote:", err);
+      }
+    },
+    [pin.id, user]
+  );
 
   if (!category) return null;
 
   const timeAgo = getTimeAgo(pin.createdAt);
-  const isResolved = pin.status === "resolved";
-
-  const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setResolvePhoto(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleSubmitResolve = async () => {
-    if (!resolvePhoto || !resolveComment.trim()) return;
-    setSubmitting(true);
-    await onResolve(pin.id, resolveComment.trim(), resolvePhoto);
-    setSubmitting(false);
-  };
-
-  const canSubmitResolve = !!resolvePhoto && resolveComment.trim().length > 0 && !submitting;
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-end justify-center">
@@ -79,12 +172,26 @@ export default function PinDetailModal({ pin, onClose, onResolve }: PinDetailMod
             <div className="flex items-center gap-2">
               <div
                 className="flex h-8 w-8 items-center justify-center rounded-full"
-                style={{ background: `${isResolved ? "#22c55e" : category.color}20` }}
+                style={{
+                  background: `${
+                    isResolved
+                      ? "#22c55e"
+                      : isPending
+                        ? "#f59e0b"
+                        : category.color
+                  }20`,
+                }}
               >
                 {isResolved ? (
                   <FaCheckCircle size={16} color="#22c55e" />
+                ) : isPending ? (
+                  <FaClock size={16} color="#f59e0b" />
                 ) : (
-                  <CategoryIcon iconName={category.icon} color={category.color} size={16} />
+                  <CategoryIcon
+                    iconName={category.icon}
+                    color={category.color}
+                    size={16}
+                  />
                 )}
               </div>
               <div>
@@ -102,6 +209,7 @@ export default function PinDetailModal({ pin, onClose, onResolve }: PinDetailMod
                 >
                   {timeAgo}
                   {isResolved && " · Resolved"}
+                  {isPending && " · Pending Resolution"}
                 </span>
               </div>
             </div>
@@ -125,8 +233,8 @@ export default function PinDetailModal({ pin, onClose, onResolve }: PinDetailMod
             style={{ maxHeight: "250px" }}
           />
 
-          {/* Category badge */}
-          <div className="mb-3 flex items-center gap-2">
+          {/* Category badge row */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <span
               className="rounded-full px-2.5 py-1 text-xs font-medium"
               style={{
@@ -150,6 +258,16 @@ export default function PinDetailModal({ pin, onClose, onResolve }: PinDetailMod
                 Resolved
               </span>
             )}
+            {isPending && (
+              <span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-500">
+                Pending
+              </span>
+            )}
+            {hasCommunityRequest && (
+              <span className="rounded-full bg-blue-500/15 px-2.5 py-1 text-xs font-medium text-blue-500">
+                Community Resolve Requested
+              </span>
+            )}
           </div>
 
           {/* Description */}
@@ -163,12 +281,18 @@ export default function PinDetailModal({ pin, onClose, onResolve }: PinDetailMod
 
           {/* Resolved proof section */}
           {isResolved && pin.resolvedPhotoUrl && (
-            <div className={`mt-4 rounded-xl border p-3 ${
-              isDark ? "border-green-900/50 bg-green-950/30" : "border-green-200 bg-green-50"
-            }`}>
-              <p className={`mb-2 text-xs font-semibold ${
-                isDark ? "text-green-400" : "text-green-700"
-              }`}>
+            <div
+              className={`mt-4 rounded-xl border p-3 ${
+                isDark
+                  ? "border-green-900/50 bg-green-950/30"
+                  : "border-green-200 bg-green-50"
+              }`}
+            >
+              <p
+                className={`mb-2 text-xs font-semibold ${
+                  isDark ? "text-green-400" : "text-green-700"
+                }`}
+              >
                 Resolution Proof
               </p>
               <img
@@ -178,124 +302,216 @@ export default function PinDetailModal({ pin, onClose, onResolve }: PinDetailMod
                 style={{ maxHeight: "180px" }}
               />
               {pin.resolvedComment && (
-                <p className={`text-sm ${
-                  isDark ? "text-green-300/80" : "text-green-800"
-                }`}>
+                <p
+                  className={`text-sm ${
+                    isDark ? "text-green-300/80" : "text-green-800"
+                  }`}
+                >
                   {pin.resolvedComment}
                 </p>
               )}
             </div>
           )}
 
-          {/* Resolve button / form (only for active pins) */}
-          {!isResolved && !showResolveForm && (
-            <button
-              onClick={() => setShowResolveForm(true)}
-              className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all ${
+          {/* ===== PENDING RESOLVED: Vote UI ===== */}
+          {isPending && (
+            <div
+              className={`mt-4 rounded-xl border p-4 ${
                 isDark
-                  ? "bg-green-600 text-white hover:bg-green-500"
-                  : "bg-green-600 text-white hover:bg-green-500"
+                  ? "border-amber-900/40 bg-amber-950/20"
+                  : "border-amber-200 bg-amber-50"
               }`}
             >
-              <FaCheck size={12} />
-              Mark as Resolved
-            </button>
-          )}
-
-          {!isResolved && showResolveForm && (
-            <div className={`mt-4 rounded-xl border p-3 ${
-              isDark ? "border-neutral-800 bg-neutral-900/50" : "border-neutral-200 bg-neutral-50"
-            }`}>
-              <p className={`mb-3 text-sm font-semibold ${
-                isDark ? "text-neutral-200" : "text-neutral-800"
-              }`}>
-                Proof of Resolution
-              </p>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleCapture}
-                className="hidden"
-              />
-
-              {!resolvePhoto ? (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`mb-3 flex w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed py-6 transition-colors ${
-                    isDark
-                      ? "border-neutral-700 text-neutral-400 hover:border-neutral-500"
-                      : "border-neutral-300 text-neutral-500 hover:border-neutral-400"
-                  }`}
-                >
-                  <FaCamera size={22} />
-                  <span className="text-xs font-medium">Take Proof Photo (required)</span>
-                </button>
-              ) : (
-                <div className="relative mb-3">
-                  <img
-                    src={resolvePhoto}
-                    alt="Proof"
-                    className="w-full rounded-lg object-cover"
-                    style={{ maxHeight: "150px" }}
+              {/* Time remaining */}
+              {timeRemaining && (
+                <div className="mb-3 flex items-center gap-2">
+                  <FaClock
+                    size={12}
+                    className={isDark ? "text-amber-400" : "text-amber-600"}
                   />
-                  <button
-                    onClick={() => {
-                      setResolvePhoto(null);
-                      if (fileInputRef.current) fileInputRef.current.value = "";
-                    }}
-                    className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white"
+                  <span
+                    className={`text-xs font-medium ${
+                      isDark ? "text-amber-400" : "text-amber-700"
+                    }`}
                   >
-                    <FaTimes size={10} />
+                    {timeRemaining} remaining in vote window
+                  </span>
+                </div>
+              )}
+
+              {/* Vote tally */}
+              {votes && (
+                <div className="mb-3 flex items-center gap-4">
+                  <div className="flex items-center gap-1.5">
+                    <FaThumbsUp
+                      size={12}
+                      className={isDark ? "text-green-400" : "text-green-600"}
+                    />
+                    <span
+                      className={`text-sm font-semibold ${
+                        isDark ? "text-green-400" : "text-green-700"
+                      }`}
+                    >
+                      {votes.up}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <FaThumbsDown
+                      size={12}
+                      className={isDark ? "text-red-400" : "text-red-600"}
+                    />
+                    <span
+                      className={`text-sm font-semibold ${
+                        isDark ? "text-red-400" : "text-red-700"
+                      }`}
+                    >
+                      {votes.down}
+                    </span>
+                  </div>
+                  {votes.total > 0 && (
+                    <span
+                      className={`text-xs ${
+                        isDark ? "text-neutral-500" : "text-neutral-400"
+                      }`}
+                    >
+                      {Math.round((votes.up / votes.total) * 100)}% upvote
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Vote buttons */}
+              {isLoggedIn && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleVote("up")}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${
+                      votes?.userVote === "up"
+                        ? "bg-green-600 text-white"
+                        : isDark
+                          ? "bg-neutral-800 text-neutral-300 hover:bg-green-900/40 hover:text-green-400"
+                          : "bg-neutral-200 text-neutral-600 hover:bg-green-100 hover:text-green-700"
+                    }`}
+                  >
+                    <FaThumbsUp size={12} />
+                    Upvote
+                  </button>
+                  <button
+                    onClick={() => handleVote("down")}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all ${
+                      votes?.userVote === "down"
+                        ? "bg-red-600 text-white"
+                        : isDark
+                          ? "bg-neutral-800 text-neutral-300 hover:bg-red-900/40 hover:text-red-400"
+                          : "bg-neutral-200 text-neutral-600 hover:bg-red-100 hover:text-red-700"
+                    }`}
+                  >
+                    <FaThumbsDown size={12} />
+                    Downvote
                   </button>
                 </div>
               )}
 
-              <textarea
-                value={resolveComment}
-                onChange={(e) => setResolveComment(e.target.value)}
-                maxLength={500}
-                rows={2}
-                placeholder="Describe what was done to resolve this issue..."
-                className={`mb-3 w-full resize-none rounded-lg border px-3 py-2 text-sm outline-none ${
-                  isDark
-                    ? "border-neutral-700 bg-neutral-800 text-white placeholder-neutral-600"
-                    : "border-neutral-300 bg-white text-neutral-900 placeholder-neutral-400"
-                }`}
-              />
+              {!isLoggedIn && (
+                <p
+                  className={`text-xs ${
+                    isDark ? "text-neutral-500" : "text-neutral-400"
+                  }`}
+                >
+                  Sign in to vote on this resolution.
+                </p>
+              )}
+            </div>
+          )}
 
-              <div className="flex gap-2">
+          {/* ===== ACTIVE PIN: Action buttons ===== */}
+          {pin.status === "active" && !hasCommunityRequest && (
+            <div className="mt-4 flex flex-col gap-2">
+              {/* Institutional: Mark Pending Resolved */}
+              {isInstitutional && (
                 <button
-                  onClick={() => {
-                    setShowResolveForm(false);
-                    setResolvePhoto(null);
-                    setResolveComment("");
-                  }}
-                  className={`flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors ${
+                  onClick={handleMarkPending}
+                  disabled={loading}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all bg-amber-500 text-white hover:bg-amber-400 disabled:opacity-50"
+                >
+                  <FaClock size={12} />
+                  {loading ? "Submitting..." : "Mark Pending Resolved"}
+                </button>
+              )}
+
+              {/* Regular user: Community Resolve */}
+              {isLoggedIn && !isInstitutional && (
+                <button
+                  onClick={handleCommunityResolve}
+                  disabled={loading}
+                  className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all disabled:opacity-50 ${
                     isDark
-                      ? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-                      : "bg-neutral-200 text-neutral-700 hover:bg-neutral-300"
+                      ? "bg-blue-600 text-white hover:bg-blue-500"
+                      : "bg-blue-600 text-white hover:bg-blue-500"
                   }`}
                 >
-                  Cancel
+                  <FaHandsHelping size={14} />
+                  {loading ? "Submitting..." : "Request Community Resolve"}
                 </button>
-                <button
-                  onClick={handleSubmitResolve}
-                  disabled={!canSubmitResolve}
-                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-all ${
-                    canSubmitResolve
-                      ? "bg-green-600 text-white hover:bg-green-500"
-                      : isDark
-                        ? "cursor-not-allowed bg-neutral-800 text-neutral-600"
-                        : "cursor-not-allowed bg-neutral-200 text-neutral-400"
+              )}
+            </div>
+          )}
+
+          {/* ===== COMMUNITY RESOLVE REQUESTED: Approval UI for institutional ===== */}
+          {hasCommunityRequest && (
+            <div
+              className={`mt-4 rounded-xl border p-4 ${
+                isDark
+                  ? "border-blue-900/40 bg-blue-950/20"
+                  : "border-blue-200 bg-blue-50"
+              }`}
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <FaHandsHelping
+                  size={13}
+                  className={isDark ? "text-blue-400" : "text-blue-600"}
+                />
+                <span
+                  className={`text-xs font-medium ${
+                    isDark ? "text-blue-400" : "text-blue-700"
                   }`}
                 >
-                  <FaCheckCircle size={12} />
-                  {submitting ? "Submitting..." : "Confirm"}
-                </button>
+                  A community member has flagged this as resolved.
+                </span>
               </div>
+
+              {isInstitutional ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleApproveCommunity}
+                    disabled={loading}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all bg-green-600 text-white hover:bg-green-500 disabled:opacity-50"
+                  >
+                    <FaCheckCircle size={12} />
+                    {loading ? "..." : "Approve"}
+                  </button>
+                  <button
+                    onClick={handleRejectCommunity}
+                    disabled={loading}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all disabled:opacity-50 ${
+                      isDark
+                        ? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
+                        : "bg-neutral-200 text-neutral-600 hover:bg-neutral-300"
+                    }`}
+                  >
+                    <FaGavel size={12} />
+                    {loading ? "..." : "Reject"}
+                  </button>
+                </div>
+              ) : (
+                <p
+                  className={`text-xs ${
+                    isDark ? "text-blue-300/60" : "text-blue-600/70"
+                  }`}
+                >
+                  Waiting for a municipality watcher to review this request.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -315,4 +531,19 @@ function getTimeAgo(dateStr: string): string {
   if (diffHr < 24) return `${diffHr}h ago`;
   const diffDay = Math.floor(diffHr / 24);
   return `${diffDay}d ago`;
+}
+
+function getTimeRemaining(pendingAt: string): string | null {
+  const deadline = new Date(pendingAt);
+  deadline.setDate(deadline.getDate() + 3);
+  const now = new Date();
+  const diffMs = deadline.getTime() - now.getTime();
+  if (diffMs <= 0) return "Voting ended";
+  const hours = Math.floor(diffMs / 3600000);
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    return `${days}d ${hours % 24}h`;
+  }
+  const mins = Math.floor((diffMs % 3600000) / 60000);
+  return `${hours}h ${mins}m`;
 }
