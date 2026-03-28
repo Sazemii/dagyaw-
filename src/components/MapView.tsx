@@ -130,6 +130,12 @@ export default function MapView({
     zoom: 13,
   };
 
+  // Bounding box covering the Philippines
+  const maxBounds: [number, number, number, number] = [
+    114.0, 4.5,   // southwest: [lng, lat]
+    127.0, 21.5,  // northeast: [lng, lat]
+  ];
+
   const handleClick = useCallback(
     (e: MapLayerMouseEvent) => {
       if (isPlacingPin && onMapClick) {
@@ -236,6 +242,7 @@ export default function MapView({
       key={theme}
       ref={mapRef}
       initialViewState={initialView}
+      maxBounds={maxBounds}
       style={{ width: "100%", height: "100vh" }}
       mapStyle={theme === "dark" ? CARTO_DARK_STYLE : CARTO_LIGHT_STYLE}
       onClick={handleClick}
