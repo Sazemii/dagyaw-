@@ -104,6 +104,10 @@ export default function UserLocationTracker({
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const headingRef = useRef<number>(0);
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
+  const animPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const targetPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const lastFixTimeRef = useRef<number>(0);
   const firstFixRef = useRef(true);
   const orientationBoundRef = useRef(false);
   const watchIdRef = useRef<number | null>(null);
@@ -127,10 +131,46 @@ export default function UserLocationTracker({
     }
   }, []);
 
+  const lerp = useCallback((a: number, b: number, t: number) => a + (b - a) * t, []);
+
+  const animatePosition = useCallback(() => {
+    if (!animPosRef.current || !targetPosRef.current || !markerRef.current) return;
+
+    const ANIM_DURATION = 1000;
+    const elapsed = performance.now() - lastFixTimeRef.current;
+    const t = Math.min(elapsed / ANIM_DURATION, 1);
+    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+    const lat = lerp(animPosRef.current.lat, targetPosRef.current.lat, eased);
+    const lng = lerp(animPosRef.current.lng, targetPosRef.current.lng, eased);
+
+    markerRef.current.setLngLat([lng, lat]);
+
+    if (t < 1) {
+      animFrameRef.current = requestAnimationFrame(animatePosition);
+    } else {
+      animPosRef.current = { ...targetPosRef.current };
+      animFrameRef.current = null;
+    }
+  }, [lerp]);
+
   const updatePosition = useCallback(() => {
     if (!posRef.current || !markerRef.current) return;
-    markerRef.current.setLngLat([posRef.current.lng, posRef.current.lat]);
-  }, []);
+
+    if (!animPosRef.current) {
+      animPosRef.current = { ...posRef.current };
+      markerRef.current.setLngLat([posRef.current.lng, posRef.current.lat]);
+      return;
+    }
+
+    targetPosRef.current = { ...posRef.current };
+    lastFixTimeRef.current = performance.now();
+
+    if (animFrameRef.current != null) {
+      cancelAnimationFrame(animFrameRef.current);
+    }
+    animFrameRef.current = requestAnimationFrame(animatePosition);
+  }, [animatePosition]);
 
   const bindOrientation = useCallback(() => {
     if (orientationBoundRef.current) return;
@@ -262,8 +302,8 @@ export default function UserLocationTracker({
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 2000,
-        timeout: 20000,
+        maximumAge: 0,
+        timeout: 10000,
       },
     );
 
@@ -275,13 +315,7 @@ export default function UserLocationTracker({
         bindOrientation();
       }
     });
-  }, [
-    mapInstance,
-    setStatus,
-    updatePosition,
-    applyRotation,
-    bindOrientation,
-  ]);
+  }, [mapInstance, setStatus, updatePosition, applyRotation, bindOrientation]);
 
   // React to locateTrigger changes
   useEffect(() => {
@@ -300,6 +334,10 @@ export default function UserLocationTracker({
       if (watchIdRef.current != null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
+      }
+      if (animFrameRef.current != null) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
       }
       markerRef.current?.remove();
       markerRef.current = null;
