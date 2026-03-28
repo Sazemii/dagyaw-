@@ -140,6 +140,22 @@ export async function getMunicipalityStats(
   };
 }
 
+/** Fetch pins for a specific municipality */
+export async function fetchPinsByMunicipality(
+  municipality: string
+): Promise<Pin[]> {
+  const { data, error } = await supabase
+    .from("pins")
+    .select("*")
+    .ilike("municipality", `%${municipality}%`)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) throw new Error(`Fetch pins failed: ${error.message}`);
+
+  return (data ?? []).map(mapRowToPin);
+}
+
 // ============================================================
 // Helpers
 // ============================================================

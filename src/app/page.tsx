@@ -1,13 +1,16 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Pin } from "../components/MapView";
 import type { Category } from "../components/categories";
 import type { Insight } from "../lib/insights/types";
 import { fetchPins, createPin, resolvePin } from "../lib/pins";
 import type { LocationStatus } from "../components/UserLocationTracker";
 import { ThemeContext, type Theme } from "../components/ThemeContext";
+import { useAuth } from "../components/AuthContext";
+import AuthModal from "../components/AuthModal";
 import StatusBar from "../components/StatusBar";
 import ReportButton from "../components/ReportButton";
 import CategorySelector from "../components/CategorySelector";
@@ -16,7 +19,7 @@ import ReportForm from "../components/ReportForm";
 import PinDetailModal from "../components/PinDetailModal";
 import InsightPanel from "../components/InsightPanel";
 import LocateButton from "../components/LocateButton";
-import { FaSun, FaMoon, FaSearch, FaCheckCircle, FaWater, FaRoad, FaExclamationTriangle } from "react-icons/fa";
+import { FaSun, FaMoon, FaSearch, FaCheckCircle, FaWater, FaRoad, FaExclamationTriangle, FaUser, FaSignOutAlt, FaTachometerAlt } from "react-icons/fa";
 import MunicipalitySearch from "../components/MunicipalitySearch";
 import CityStats from "../components/CityStats";
 import { computeFloodWasteAlerts, type FloodWasteAlert } from "../data/flood-zones";
@@ -27,6 +30,9 @@ const MapView = dynamic(() => import("../components/MapView"), { ssr: false });
 type Mode = "idle" | "selecting" | "placing" | "reporting";
 
 export default function Home() {
+  const router = useRouter();
+  const { user, isCommunityWatcher, signOut } = useAuth();
+
   const [pins, setPins] = useState<Pin[]>([]);
   const [mode, setMode] = useState<Mode>("idle");
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
@@ -46,8 +52,23 @@ export default function Home() {
   const [viewingInsight, setViewingInsight] = useState<Insight | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
   const [generatedFloodAlertIds, setGeneratedFloodAlertIds] = useState<Set<string>>(new Set());
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isDark = theme === "dark";
+
+  // Close user menu on outside click
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showUserMenu]);
 
   const floodAlerts = useMemo<FloodWasteAlert[]>(
     () => (showFloodZones ? computeFloodWasteAlerts(pins, 4) : []),
@@ -325,6 +346,87 @@ export default function Home() {
           <FaSearch size={13} />
         </button>
 
+        {/* Auth / User button */}
+        <div className="fixed top-4 right-28 z-[1000]" ref={userMenuRef}>
+          {user ? (
+            <>
+              <button
+                onClick={() => setShowUserMenu((v) => !v)}
+                className={`flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all ${
+                  isDark
+                    ? "border-[#f5c542]/30 bg-[#f5c542]/10 text-[#f5c542]"
+                    : "border-[#b8860b]/30 bg-[#b8860b]/10 text-[#b8860b]"
+                }`}
+                title={user.email ?? "Account"}
+              >
+                <span className="text-xs font-bold uppercase">
+                  {user.email?.[0] ?? "U"}
+                </span>
+              </button>
+              {showUserMenu && (
+                <div
+                  className={`absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border shadow-xl ${
+                    isDark
+                      ? "border-neutral-800 bg-[#141414]"
+                      : "border-neutral-200 bg-white"
+                  }`}
+                >
+                  <div
+                    className={`px-3 py-2 text-[10px] truncate ${
+                      isDark ? "text-neutral-500" : "text-neutral-400"
+                    }`}
+                  >
+                    {user.email}
+                  </div>
+                  <div className={`border-t ${isDark ? "border-neutral-800" : "border-neutral-100"}`} />
+                  {isCommunityWatcher && (
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        router.push("/dashboard");
+                      }}
+                      className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors ${
+                        isDark
+                          ? "text-neutral-300 hover:bg-neutral-800"
+                          : "text-neutral-700 hover:bg-neutral-50"
+                      }`}
+                    >
+                      <FaTachometerAlt size={11} className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"} />
+                      Dashboard
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      signOut();
+                    }}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors ${
+                      isDark
+                        ? "text-neutral-300 hover:bg-neutral-800"
+                        : "text-neutral-700 hover:bg-neutral-50"
+                    }`}
+                  >
+                    <FaSignOutAlt size={11} className="text-red-400" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <button
+              onClick={() => setShowAuthModal(true)}
+              className={`flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all ${
+                isDark
+                  ? "border-neutral-700 bg-[#0f0f0f]/80 text-neutral-400 hover:text-[#f5c542]"
+                  : "border-neutral-300 bg-white/80 text-neutral-500 hover:text-[#b8860b]"
+              }`}
+              title="Sign In"
+            >
+              <FaUser size={13} />
+            </button>
+          )}
+        </div>
+
         <StatusBar pins={pins} />
 
         {/* Map overlay toggles */}
@@ -473,6 +575,10 @@ export default function Home() {
             municipalityName={cityStatsName}
             onClose={() => setCityStatsName(null)}
           />
+        )}
+
+        {showAuthModal && (
+          <AuthModal onClose={() => setShowAuthModal(false)} />
         )}
       </main>
     </ThemeContext>
