@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
-import { FaTimes, FaCamera, FaCheck, FaCheckCircle, FaMapMarkerAlt } from "react-icons/fa";
+import { FaTimes, FaCamera, FaCheck, FaCheckCircle } from "react-icons/fa";
 import type { Pin } from "./MapView";
 import { getCategoryById } from "./categories";
 import CategoryIcon from "./CategoryIcon";
@@ -151,23 +151,6 @@ export default function PinDetailModal({ pin, onClose, onResolve }: PinDetailMod
               </span>
             )}
           </div>
-
-          {/* Location info */}
-          {(pin.barangay || pin.municipality) && (
-            <div className="mb-3 flex items-center gap-1.5">
-              <FaMapMarkerAlt
-                size={11}
-                className={isDark ? "text-neutral-500" : "text-neutral-400"}
-              />
-              <span
-                className={`text-xs ${
-                  isDark ? "text-neutral-400" : "text-neutral-500"
-                }`}
-              >
-                {[pin.barangay, pin.municipality].filter(Boolean).join(", ")}
-              </span>
-            </div>
-          )}
 
           {/* Description */}
           <p

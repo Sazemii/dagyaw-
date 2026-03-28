@@ -3,15 +3,47 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { FaTimes, FaSearch, FaMapMarkerAlt } from "react-icons/fa";
 import { useTheme } from "./ThemeContext";
-import {
-  searchMunicipalities,
-  getMunicipalityStats,
-  type MunicipalityStats,
-} from "../lib/pins";
+import { getMunicipalityStats, type MunicipalityStats } from "../lib/pins";
+
+interface Place {
+  name: string;
+  displayName: string;
+  lat: number;
+  lng: number;
+}
 
 interface MunicipalitySearchProps {
   onClose: () => void;
-  onSelectMunicipality?: (name: string, lat: number, lng: number) => void;
+  onSelectMunicipality: (name: string, lat: number, lng: number) => void;
+}
+
+/** Search Philippine cities/municipalities via Nominatim forward geocoding */
+async function searchPlaces(query: string): Promise<Place[]> {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?` +
+      new URLSearchParams({
+        q: query,
+        countrycodes: "ph",
+        format: "json",
+        limit: "8",
+        featuretype: "city",
+        addressdetails: "1",
+      }),
+    { headers: { "User-Agent": "Bayanihan-App/1.0" } }
+  );
+  if (!res.ok) return [];
+
+  const data = await res.json();
+  return data.map((item: { display_name: string; lat: string; lon: string; address?: Record<string, string> }) => {
+    const addr = item.address || {};
+    const name = addr.city || addr.municipality || addr.town || item.display_name.split(",")[0];
+    return {
+      name,
+      displayName: item.display_name,
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon),
+    };
+  });
 }
 
 export default function MunicipalitySearch({
@@ -23,7 +55,8 @@ export default function MunicipalitySearch({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<Place[]>([]);
+  const [selected, setSelected] = useState<Place | null>(null);
   const [stats, setStats] = useState<MunicipalityStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
@@ -33,9 +66,10 @@ export default function MunicipalitySearch({
     inputRef.current?.focus();
   }, []);
 
-  // Debounced search for municipality suggestions
+  // Debounced Nominatim search
   const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
+    setSelected(null);
     setStats(null);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -48,46 +82,35 @@ export default function MunicipalitySearch({
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const results = await searchMunicipalities(value.trim());
+        const results = await searchPlaces(value.trim());
         setSuggestions(results);
       } catch {
         setSuggestions([]);
       } finally {
         setSearching(false);
       }
-    }, 300);
+    }, 400);
   }, []);
 
-  // Select a municipality and load stats
-  const handleSelect = useCallback(async (name: string) => {
-    setQuery(name);
-    setSuggestions([]);
-    setLoading(true);
-    try {
-      const result = await getMunicipalityStats(name);
-      setStats(result);
-    } catch {
-      setStats(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Select a place → fly to it + load stats
+  const handleSelect = useCallback(
+    async (place: Place) => {
+      setQuery(place.name);
+      setSelected(place);
+      setSuggestions([]);
 
-  // Forward geocode municipality to pan map
-  const handleGoToMap = useCallback(
-    async (name: string) => {
-      if (!onSelectMunicipality) return;
+      // Fly to the municipality immediately
+      onSelectMunicipality(place.name, place.lat, place.lng);
+
+      // Load stats from pins
+      setLoading(true);
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(name + ", Philippines")}&format=json&limit=1`,
-          { headers: { "User-Agent": "Bayanihan-App/1.0" } }
-        );
-        const data = await res.json();
-        if (data.length > 0) {
-          onSelectMunicipality(name, parseFloat(data[0].lat), parseFloat(data[0].lon));
-        }
+        const result = await getMunicipalityStats(place.name);
+        setStats(result);
       } catch {
-        // silently fail
+        setStats(null);
+      } finally {
+        setLoading(false);
       }
     },
     [onSelectMunicipality]
@@ -129,7 +152,7 @@ export default function MunicipalitySearch({
                 isDark ? "text-white" : "text-neutral-900"
               }`}
             >
-              Municipality Search
+              Search City / Municipality
             </h2>
             <button
               onClick={onClose}
@@ -156,7 +179,7 @@ export default function MunicipalitySearch({
               type="text"
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
-              placeholder="Search municipality (e.g. Quezon City)"
+              placeholder="Search any city or municipality..."
               className={`w-full rounded-xl border py-2.5 pl-9 pr-3 text-sm outline-none ${
                 isDark
                   ? "border-neutral-700 bg-neutral-800 text-white placeholder-neutral-500"
@@ -166,17 +189,17 @@ export default function MunicipalitySearch({
           </div>
 
           {/* Suggestions dropdown */}
-          {suggestions.length > 0 && !stats && (
+          {suggestions.length > 0 && !selected && (
             <div
-              className={`mb-4 rounded-xl border ${
+              className={`mb-4 rounded-xl border overflow-hidden ${
                 isDark ? "border-neutral-800" : "border-neutral-200"
               }`}
             >
-              {suggestions.map((name) => (
+              {suggestions.map((place, i) => (
                 <button
-                  key={name}
-                  onClick={() => handleSelect(name)}
-                  className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors first:rounded-t-xl last:rounded-b-xl ${
+                  key={`${place.name}-${i}`}
+                  onClick={() => handleSelect(place)}
+                  className={`flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-sm transition-colors ${
                     isDark
                       ? "text-neutral-300 hover:bg-neutral-800"
                       : "text-neutral-700 hover:bg-neutral-50"
@@ -184,9 +207,20 @@ export default function MunicipalitySearch({
                 >
                   <FaMapMarkerAlt
                     size={12}
-                    className={isDark ? "text-neutral-500" : "text-neutral-400"}
+                    className={`mt-0.5 shrink-0 ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
                   />
-                  {name}
+                  <div className="min-w-0">
+                    <p className={`font-medium truncate ${isDark ? "text-white" : "text-neutral-900"}`}>
+                      {place.name}
+                    </p>
+                    <p
+                      className={`text-xs truncate ${
+                        isDark ? "text-neutral-500" : "text-neutral-400"
+                      }`}
+                    >
+                      {place.displayName}
+                    </p>
+                  </div>
                 </button>
               ))}
             </div>
@@ -215,37 +249,22 @@ export default function MunicipalitySearch({
           )}
 
           {/* Stats card */}
-          {stats && (
+          {stats && selected && (
             <div
               className={`rounded-xl border p-4 ${
                 isDark ? "border-neutral-800 bg-neutral-900/50" : "border-neutral-200 bg-neutral-50"
               }`}
             >
-              <div className="mb-3 flex items-center justify-between">
-                <h3
-                  className={`text-sm font-semibold ${
-                    isDark ? "text-white" : "text-neutral-900"
-                  }`}
-                >
-                  {stats.municipality}
-                </h3>
-                {onSelectMunicipality && (
-                  <button
-                    onClick={() => handleGoToMap(stats.municipality)}
-                    className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
-                      isDark
-                        ? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700"
-                        : "bg-neutral-200 text-neutral-600 hover:bg-neutral-300"
-                    }`}
-                  >
-                    <FaMapMarkerAlt size={10} />
-                    Go to map
-                  </button>
-                )}
-              </div>
+              <h3
+                className={`mb-3 text-sm font-semibold ${
+                  isDark ? "text-white" : "text-neutral-900"
+                }`}
+              >
+                {stats.municipality}
+              </h3>
 
               {/* Stats grid */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {/* Active */}
                 <div
                   className={`rounded-lg p-3 text-center ${
@@ -259,24 +278,6 @@ export default function MunicipalitySearch({
                     }`}
                   >
                     Active
-                  </p>
-                </div>
-
-                {/* Pending (active but not yet resolved = same as active for now) */}
-                <div
-                  className={`rounded-lg p-3 text-center ${
-                    isDark ? "bg-yellow-950/40 border border-yellow-900/30" : "bg-yellow-50 border border-yellow-100"
-                  }`}
-                >
-                  <p className="text-2xl font-bold text-yellow-500">
-                    {stats.total - stats.active - stats.resolved}
-                  </p>
-                  <p
-                    className={`mt-0.5 text-xs ${
-                      isDark ? "text-yellow-400/70" : "text-yellow-600"
-                    }`}
-                  >
-                    Pending
                   </p>
                 </div>
 
@@ -297,7 +298,7 @@ export default function MunicipalitySearch({
                 </div>
               </div>
 
-              {/* Total bar */}
+              {/* Total */}
               <div className="mt-3 flex items-center justify-between">
                 <span
                   className={`text-xs ${
@@ -322,36 +323,39 @@ export default function MunicipalitySearch({
                     isDark ? "bg-neutral-800" : "bg-neutral-200"
                   }`}
                 >
-                  <div
-                    className="flex h-full"
-                    style={{ width: "100%" }}
-                  >
+                  <div className="flex h-full" style={{ width: "100%" }}>
                     <div
                       className="h-full bg-green-500 transition-all"
-                      style={{
-                        width: `${(stats.resolved / stats.total) * 100}%`,
-                      }}
+                      style={{ width: `${(stats.resolved / stats.total) * 100}%` }}
                     />
                     <div
                       className="h-full bg-red-500 transition-all"
-                      style={{
-                        width: `${(stats.active / stats.total) * 100}%`,
-                      }}
+                      style={{ width: `${(stats.active / stats.total) * 100}%` }}
                     />
                   </div>
                 </div>
+              )}
+
+              {stats.total === 0 && (
+                <p
+                  className={`mt-2 text-center text-xs ${
+                    isDark ? "text-neutral-600" : "text-neutral-400"
+                  }`}
+                >
+                  No reports yet in this area
+                </p>
               )}
             </div>
           )}
 
           {/* Empty state */}
-          {query.length >= 2 && !searching && !loading && !stats && suggestions.length === 0 && (
+          {query.length >= 2 && !searching && !loading && !selected && suggestions.length === 0 && (
             <p
               className={`text-center text-sm ${
                 isDark ? "text-neutral-500" : "text-neutral-400"
               }`}
             >
-              No municipalities found matching &ldquo;{query}&rdquo;
+              No results for &ldquo;{query}&rdquo;
             </p>
           )}
         </div>

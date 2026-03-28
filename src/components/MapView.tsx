@@ -26,7 +26,6 @@ export interface Pin {
   resolvedComment?: string;
   resolvedAt?: string;
   createdAt: string;
-  barangay?: string;
   municipality?: string;
 }
 
