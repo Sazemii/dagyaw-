@@ -15,7 +15,7 @@ export default function ReportButton({ isActive, onClick }: ReportButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`fixed bottom-6 right-6 z-[1000] flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300 ${
+      className={`fixed bottom-5 right-5 z-[1000] flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300 sm:bottom-6 sm:right-6 ${
         isActive
           ? isDark
             ? "rotate-45 bg-neutral-800 text-neutral-300 hover:bg-neutral-700"

@@ -27,7 +27,7 @@ export default function LocateButton({ onClick, status }: LocateButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`fixed bottom-6 left-6 z-[1000] flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md transition-all ${
+      className={`fixed bottom-5 left-5 z-[1000] flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md transition-all sm:bottom-6 sm:left-6 ${
         isDark
           ? "border-neutral-700 bg-[#0f0f0f]/80 hover:bg-[#1a1a1a]"
           : "border-neutral-300 bg-white/80 hover:bg-white"

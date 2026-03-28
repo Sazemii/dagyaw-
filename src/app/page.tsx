@@ -20,7 +20,6 @@ import InsightPanel from "../components/InsightPanel";
 import LocateButton from "../components/LocateButton";
 import { FaCheckCircle, FaWater, FaRoad, FaExclamationTriangle } from "react-icons/fa";
 import Navbar from "../components/Navbar";
-import MunicipalitySearch from "../components/MunicipalitySearch";
 import CityStats from "../components/CityStats";
 import { computeFloodWasteAlerts, type FloodWasteAlert } from "../data/flood-zones";
 import { computeProneZones, type ProneZone } from "../lib/prone-zones";
@@ -311,24 +310,27 @@ export default function Home() {
         {/* Navbar */}
         <Navbar
           onToggleTheme={() => setTheme(isDark ? "light" : "dark")}
-          onOpenSearch={() => setShowSearch(true)}
+          showSearch={showSearch}
+          onToggleSearch={() => setShowSearch((v) => !v)}
+          onCloseSearch={() => setShowSearch(false)}
           onOpenAuth={() => setShowAuthModal(true)}
           onNavigateDashboard={() => router.push("/dashboard")}
           showUserMenu={showUserMenu}
           onToggleUserMenu={() => setShowUserMenu((v) => !v)}
           onCloseUserMenu={() => setShowUserMenu(false)}
+          onSelectMunicipality={handleSelectMunicipality}
         />
 
         {/* Insight loading indicator */}
         {insightLoading && (
-          <div className="fixed top-14 right-4 z-[1001] flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/80 px-3 py-1.5 backdrop-blur-md">
+          <div className="fixed top-16 right-5 z-[1001] flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/80 px-3 py-1.5 backdrop-blur-md sm:right-6">
             <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
             <span className="text-[10px] font-medium text-blue-300">Analyzing...</span>
           </div>
         )}
 
         {/* Map overlay toggles */}
-        <div className="fixed bottom-[4.5rem] left-6 z-[1000] flex flex-col gap-2">
+        <div className="fixed bottom-20 left-5 z-[1000] flex flex-col gap-2 sm:left-6">
           {/* Flood zones toggle */}
           <button
             onClick={() => setShowFloodZones((v) => !v)}
@@ -458,13 +460,6 @@ export default function Home() {
           <InsightPanel
             insight={viewingInsight}
             onClose={() => setViewingInsight(null)}
-          />
-        )}
-
-        {showSearch && (
-          <MunicipalitySearch
-            onClose={() => setShowSearch(false)}
-            onSelectMunicipality={handleSelectMunicipality}
           />
         )}
 
