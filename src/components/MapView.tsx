@@ -21,12 +21,16 @@ export interface Pin {
   categoryId: string;
   description: string;
   photoUrl: string;
-  status: "active" | "resolved";
+  status: "active" | "pending_resolved" | "resolved";
   resolvedPhotoUrl?: string;
   resolvedComment?: string;
   resolvedAt?: string;
   createdAt: string;
   municipality?: string;
+  pendingResolvedAt?: string;
+  pendingResolvedBy?: string;
+  communityResolveRequested?: boolean;
+  communityResolveBy?: string;
 }
 
 interface MapViewProps {

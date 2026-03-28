@@ -65,6 +65,10 @@ export async function fetchPins(): Promise<Pin[]> {
     resolvedAt: row.resolved_at ?? undefined,
     createdAt: row.created_at,
     municipality: row.municipality ?? undefined,
+    pendingResolvedAt: row.pending_resolved_at ?? undefined,
+    pendingResolvedBy: row.pending_resolved_by ?? undefined,
+    communityResolveRequested: row.community_resolve_requested ?? false,
+    communityResolveBy: row.community_resolve_by ?? undefined,
   }));
 }
 

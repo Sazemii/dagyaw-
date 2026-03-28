@@ -5,6 +5,7 @@ export interface Category {
   color: string;
   sdg: number;
   group: string;
+  severity: number; // 1 (minor) to 5 (critical)
 }
 
 export const CATEGORIES: Category[] = [
@@ -16,6 +17,7 @@ export const CATEGORIES: Category[] = [
     color: "#f97316", // orange
     sdg: 12,
     group: "Waste & Pollution",
+    severity: 4,
   },
   {
     id: "unsegregated-waste",
@@ -24,6 +26,7 @@ export const CATEGORIES: Category[] = [
     color: "#a3e635", // lime
     sdg: 12,
     group: "Waste & Pollution",
+    severity: 1,
   },
   {
     id: "illegal-burning",
@@ -32,6 +35,7 @@ export const CATEGORIES: Category[] = [
     color: "#ef4444", // vibrant red
     sdg: 12,
     group: "Waste & Pollution",
+    severity: 4,
   },
   {
     id: "water-pollution",
@@ -40,6 +44,7 @@ export const CATEGORIES: Category[] = [
     color: "#a855f7", // purple
     sdg: 12,
     group: "Waste & Pollution",
+    severity: 4,
   },
 
   // Energy & Infrastructure (SDG 7)
@@ -50,6 +55,7 @@ export const CATEGORIES: Category[] = [
     color: "#f5c542", // yellow
     sdg: 7,
     group: "Energy & Infrastructure",
+    severity: 3,
   },
   {
     id: "traffic-light",
@@ -58,6 +64,7 @@ export const CATEGORIES: Category[] = [
     color: "#f5c542", // yellow
     sdg: 7,
     group: "Energy & Infrastructure",
+    severity: 3,
   },
 
   // Urban Environment (SDG 11)
@@ -68,6 +75,7 @@ export const CATEGORIES: Category[] = [
     color: "#78716c", // stone
     sdg: 11,
     group: "Urban Environment",
+    severity: 4,
   },
   {
     id: "flooding",
@@ -76,6 +84,7 @@ export const CATEGORIES: Category[] = [
     color: "#3b82f6", // blue
     sdg: 11,
     group: "Urban Environment",
+    severity: 5,
   },
   {
     id: "fallen-tree",
@@ -84,6 +93,7 @@ export const CATEGORIES: Category[] = [
     color: "#22c55e", // green
     sdg: 11,
     group: "Urban Environment",
+    severity: 2,
   },
   {
     id: "unsafe-structure",
@@ -92,6 +102,7 @@ export const CATEGORIES: Category[] = [
     color: "#eab308", // amber
     sdg: 11,
     group: "Urban Environment",
+    severity: 5,
   },
   {
     id: "noise-pollution",
@@ -100,6 +111,7 @@ export const CATEGORIES: Category[] = [
     color: "#d946ef", // fuchsia
     sdg: 11,
     group: "Urban Environment",
+    severity: 1,
   },
   {
     id: "stray-animal",
@@ -108,6 +120,7 @@ export const CATEGORIES: Category[] = [
     color: "#fb923c", // light orange
     sdg: 11,
     group: "Urban Environment",
+    severity: 2,
   },
 ];
 
