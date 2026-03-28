@@ -34,16 +34,21 @@ async function searchPlaces(query: string): Promise<Place[]> {
   if (!res.ok) return [];
 
   const data = await res.json();
-  return data.map((item: { display_name: string; lat: string; lon: string; address?: Record<string, string> }) => {
-    const addr = item.address || {};
-    const name = addr.city || addr.municipality || addr.town || item.display_name.split(",")[0];
-    return {
-      name,
-      displayName: item.display_name,
-      lat: parseFloat(item.lat),
-      lng: parseFloat(item.lon),
-    };
-  });
+  return data
+    .filter((item: { address?: Record<string, string> }) => {
+      const addr = item.address || {};
+      return addr.city || addr.municipality || addr.town;
+    })
+    .map((item: { display_name: string; lat: string; lon: string; address?: Record<string, string> }) => {
+      const addr = item.address || {};
+      const name = addr.city || addr.municipality || addr.town || item.display_name.split(",")[0];
+      return {
+        name,
+        displayName: item.display_name,
+        lat: parseFloat(item.lat),
+        lng: parseFloat(item.lon),
+      };
+    });
 }
 
 export default function MunicipalitySearch({
