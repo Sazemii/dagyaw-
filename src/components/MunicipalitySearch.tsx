@@ -29,7 +29,7 @@ async function searchPlaces(query: string): Promise<Place[]> {
         featuretype: "city",
         addressdetails: "1",
       }),
-    { headers: { "User-Agent": "Bayanihan-App/1.0" } }
+    { headers: { "User-Agent": "Bayanihan-App/1.0" } },
   );
   if (!res.ok) return [];
 
@@ -39,16 +39,27 @@ async function searchPlaces(query: string): Promise<Place[]> {
       const addr = item.address || {};
       return addr.city || addr.municipality || addr.town;
     })
-    .map((item: { display_name: string; lat: string; lon: string; address?: Record<string, string> }) => {
-      const addr = item.address || {};
-      const name = addr.city || addr.municipality || addr.town || item.display_name.split(",")[0];
-      return {
-        name,
-        displayName: item.display_name,
-        lat: parseFloat(item.lat),
-        lng: parseFloat(item.lon),
-      };
-    });
+    .map(
+      (item: {
+        display_name: string;
+        lat: string;
+        lon: string;
+        address?: Record<string, string>;
+      }) => {
+        const addr = item.address || {};
+        const name =
+          addr.city ||
+          addr.municipality ||
+          addr.town ||
+          item.display_name.split(",")[0];
+        return {
+          name,
+          displayName: item.display_name,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+        };
+      },
+    );
 }
 
 export default function MunicipalitySearch({
@@ -118,7 +129,7 @@ export default function MunicipalitySearch({
         setLoading(false);
       }
     },
-    [onSelectMunicipality]
+    [onSelectMunicipality],
   );
 
   return (
@@ -215,7 +226,9 @@ export default function MunicipalitySearch({
                     className={`mt-0.5 shrink-0 ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
                   />
                   <div className="min-w-0">
-                    <p className={`font-medium truncate ${isDark ? "text-white" : "text-neutral-900"}`}>
+                    <p
+                      className={`font-medium truncate ${isDark ? "text-white" : "text-neutral-900"}`}
+                    >
                       {place.name}
                     </p>
                     <p
@@ -257,7 +270,9 @@ export default function MunicipalitySearch({
           {stats && selected && (
             <div
               className={`rounded-xl border p-4 ${
-                isDark ? "border-neutral-800 bg-neutral-900/50" : "border-neutral-200 bg-neutral-50"
+                isDark
+                  ? "border-neutral-800 bg-neutral-900/50"
+                  : "border-neutral-200 bg-neutral-50"
               }`}
             >
               <h3
@@ -273,10 +288,14 @@ export default function MunicipalitySearch({
                 {/* Active */}
                 <div
                   className={`rounded-lg p-3 text-center ${
-                    isDark ? "bg-red-950/40 border border-red-900/30" : "bg-red-50 border border-red-100"
+                    isDark
+                      ? "bg-red-950/40 border border-red-900/30"
+                      : "bg-red-50 border border-red-100"
                   }`}
                 >
-                  <p className="text-2xl font-bold text-red-500">{stats.active}</p>
+                  <p className="text-2xl font-bold text-red-500">
+                    {stats.active}
+                  </p>
                   <p
                     className={`mt-0.5 text-xs ${
                       isDark ? "text-red-400/70" : "text-red-600"
@@ -289,10 +308,14 @@ export default function MunicipalitySearch({
                 {/* Resolved */}
                 <div
                   className={`rounded-lg p-3 text-center ${
-                    isDark ? "bg-green-950/40 border border-green-900/30" : "bg-green-50 border border-green-100"
+                    isDark
+                      ? "bg-green-950/40 border border-green-900/30"
+                      : "bg-green-50 border border-green-100"
                   }`}
                 >
-                  <p className="text-2xl font-bold text-green-500">{stats.resolved}</p>
+                  <p className="text-2xl font-bold text-green-500">
+                    {stats.resolved}
+                  </p>
                   <p
                     className={`mt-0.5 text-xs ${
                       isDark ? "text-green-400/70" : "text-green-600"
@@ -331,11 +354,15 @@ export default function MunicipalitySearch({
                   <div className="flex h-full" style={{ width: "100%" }}>
                     <div
                       className="h-full bg-green-500 transition-all"
-                      style={{ width: `${(stats.resolved / stats.total) * 100}%` }}
+                      style={{
+                        width: `${(stats.resolved / stats.total) * 100}%`,
+                      }}
                     />
                     <div
                       className="h-full bg-red-500 transition-all"
-                      style={{ width: `${(stats.active / stats.total) * 100}%` }}
+                      style={{
+                        width: `${(stats.active / stats.total) * 100}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -354,15 +381,19 @@ export default function MunicipalitySearch({
           )}
 
           {/* Empty state */}
-          {query.length >= 2 && !searching && !loading && !selected && suggestions.length === 0 && (
-            <p
-              className={`text-center text-sm ${
-                isDark ? "text-neutral-500" : "text-neutral-400"
-              }`}
-            >
-              No results for &ldquo;{query}&rdquo;
-            </p>
-          )}
+          {query.length >= 2 &&
+            !searching &&
+            !loading &&
+            !selected &&
+            suggestions.length === 0 && (
+              <p
+                className={`text-center text-sm ${
+                  isDark ? "text-neutral-500" : "text-neutral-400"
+                }`}
+              >
+                No results for &ldquo;{query}&rdquo;
+              </p>
+            )}
         </div>
       </div>
     </div>
