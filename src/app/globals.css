@@ -106,49 +106,19 @@ body {
   pointer-events: none;
 }
 
-.gps-dot-container {
-  position: absolute;
-  left: -12px;
-  top: -12px;
-  width: 24px;
-  height: 24px;
-}
-
-.gps-dot {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 12px;
-  height: 12px;
-  background: #06b6d4;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
-}
-
 .gps-pulse-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 24px;
-  height: 24px;
-  border: 2px solid rgba(6, 182, 212, 0.4);
-  border-radius: 50%;
-  animation: gps-pulse 2s ease-out infinite;
+  animation: gps-pulse 2.5s ease-out infinite;
+  transform-origin: center;
 }
 
 @keyframes gps-pulse {
   0% {
-    width: 24px;
-    height: 24px;
-    opacity: 0.6;
+    r: 18;
+    stroke-opacity: 0.25;
   }
   100% {
-    width: 56px;
-    height: 56px;
-    opacity: 0;
+    r: 45;
+    stroke-opacity: 0;
   }
 }
 

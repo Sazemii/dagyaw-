@@ -3,35 +3,77 @@
 import { useEffect, useRef } from "react";
 import { useMap } from "react-map-gl/maplibre";
 
-const CYAN = "#06b6d4";
-const CONE_LENGTH = 90;
-const CONE_ANGLE = 50;
+// Amber/gold that fits the dark mode palette
+const USER_COLOR = "#f5c542";
+const USER_COLOR_RGB = "245, 197, 66";
+const CONE_RADIUS = 160;
+const CONE_ANGLE = 65;
+const DOT_SIZE = 20;
+const SVG_SIZE = CONE_RADIUS * 2 + DOT_SIZE;
+const CENTER = SVG_SIZE / 2;
 
-function buildConeSVG(heading: number): string {
-  const cx = CONE_LENGTH;
-  const cy = CONE_LENGTH;
-  const r = CONE_LENGTH;
-  const startAngle = ((heading - CONE_ANGLE / 2 - 90) * Math.PI) / 180;
-  const endAngle = ((heading + CONE_ANGLE / 2 - 90) * Math.PI) / 180;
+function buildUserSVG(heading: number): string {
+  const startDeg = heading - CONE_ANGLE / 2 - 90;
+  const endDeg = heading + CONE_ANGLE / 2 - 90;
+  const startRad = (startDeg * Math.PI) / 180;
+  const endRad = (endDeg * Math.PI) / 180;
 
-  const x1 = cx + r * Math.cos(startAngle);
-  const y1 = cy + r * Math.sin(startAngle);
-  const x2 = cx + r * Math.cos(endAngle);
-  const y2 = cy + r * Math.sin(endAngle);
+  const x1 = CENTER + CONE_RADIUS * Math.cos(startRad);
+  const y1 = CENTER + CONE_RADIUS * Math.sin(startRad);
+  const x2 = CENTER + CONE_RADIUS * Math.cos(endRad);
+  const y2 = CENTER + CONE_RADIUS * Math.sin(endRad);
+
+  // Large arc flag: 0 since cone < 180deg
+  const largeArc = CONE_ANGLE > 180 ? 1 : 0;
 
   return `
-    <svg width="${CONE_LENGTH * 2}" height="${CONE_LENGTH * 2}"
-         viewBox="0 0 ${CONE_LENGTH * 2} ${CONE_LENGTH * 2}"
-         style="position:absolute;left:-${CONE_LENGTH}px;top:-${CONE_LENGTH}px;pointer-events:none;">
+    <svg width="${SVG_SIZE}" height="${SVG_SIZE}" viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}"
+         style="position:absolute;left:-${CENTER}px;top:-${CENTER}px;pointer-events:none;overflow:visible;">
       <defs>
-        <radialGradient id="cg" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="${CYAN}" stop-opacity="0.3"/>
-          <stop offset="70%" stop-color="${CYAN}" stop-opacity="0.06"/>
-          <stop offset="100%" stop-color="${CYAN}" stop-opacity="0"/>
+        <!-- Cone gradient: bright near user, fading out -->
+        <radialGradient id="ug" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="rgb(${USER_COLOR_RGB})" stop-opacity="0.22"/>
+          <stop offset="40%" stop-color="rgb(${USER_COLOR_RGB})" stop-opacity="0.10"/>
+          <stop offset="80%" stop-color="rgb(${USER_COLOR_RGB})" stop-opacity="0.03"/>
+          <stop offset="100%" stop-color="rgb(${USER_COLOR_RGB})" stop-opacity="0"/>
         </radialGradient>
+        <!-- Glow filter for the dot -->
+        <filter id="dotglow" x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
-      <path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z"
-            fill="url(#cg)" />
+
+      <!-- Direction cone -->
+      <path d="M ${CENTER} ${CENTER} L ${x1} ${y1} A ${CONE_RADIUS} ${CONE_RADIUS} 0 ${largeArc} 1 ${x2} ${y2} Z"
+            fill="url(#ug)" />
+
+      <!-- Outer glow ring -->
+      <circle cx="${CENTER}" cy="${CENTER}" r="${DOT_SIZE * 0.9}"
+              fill="none" stroke="rgb(${USER_COLOR_RGB})" stroke-width="1"
+              stroke-opacity="0.15" class="gps-pulse-ring" />
+
+      <!-- Ambient glow -->
+      <circle cx="${CENTER}" cy="${CENTER}" r="${DOT_SIZE * 0.65}"
+              fill="rgb(${USER_COLOR_RGB})" fill-opacity="0.08"
+              filter="url(#dotglow)" />
+
+      <!-- Outer ring -->
+      <circle cx="${CENTER}" cy="${CENTER}" r="${DOT_SIZE / 2}"
+              fill="none" stroke="rgb(${USER_COLOR_RGB})" stroke-width="2.5"
+              stroke-opacity="0.4" />
+
+      <!-- Inner filled dot -->
+      <circle cx="${CENTER}" cy="${CENTER}" r="${DOT_SIZE / 2 - 3}"
+              fill="${USER_COLOR}" fill-opacity="0.9"
+              stroke="rgba(255,255,255,0.6)" stroke-width="1.5" />
+
+      <!-- Center highlight -->
+      <circle cx="${CENTER - 2}" cy="${CENTER - 2}" r="2.5"
+              fill="white" fill-opacity="0.5" />
     </svg>
   `;
 }
@@ -43,6 +85,7 @@ export default function UserLocationTracker() {
   const headingRef = useRef<number>(0);
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
   const firstFixRef = useRef(true);
+  const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!mapInstance || !navigator.geolocation) return;
@@ -58,20 +101,22 @@ export default function UserLocationTracker() {
     import("maplibre-gl").then((mgl) => {
       marker = new mgl.Marker({ element: el }).setLngLat([0, 0]).addTo(map);
       markerRef.current = marker;
-      // Render initial state if position already arrived
-      if (posRef.current) update();
+      if (posRef.current) render();
     });
 
-    function update() {
+    function render() {
       if (!posRef.current || !markerElRef.current) return;
-      markerElRef.current.innerHTML = `
-        ${buildConeSVG(headingRef.current)}
-        <div class="gps-dot-container">
-          <div class="gps-pulse-ring"></div>
-          <div class="gps-dot"></div>
-        </div>
-      `;
+      markerElRef.current.innerHTML = buildUserSVG(headingRef.current);
       markerRef.current?.setLngLat([posRef.current.lng, posRef.current.lat]);
+    }
+
+    // Throttle renders to animation frames
+    function scheduleRender() {
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        render();
+      });
     }
 
     const watchId = navigator.geolocation.watchPosition(
@@ -84,13 +129,13 @@ export default function UserLocationTracker() {
 
         if (firstFixRef.current) {
           firstFixRef.current = false;
-          map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 15 });
+          map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 16 });
         }
 
-        update();
+        scheduleRender();
       },
       (err) => console.warn("Geolocation error:", err.message),
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
 
     function handleOrientation(e: DeviceOrientationEvent) {
@@ -103,17 +148,18 @@ export default function UserLocationTracker() {
       }
       if (heading != null) {
         headingRef.current = heading;
-        update();
+        scheduleRender();
       }
     }
 
-    window.addEventListener("deviceorientationabsolute", handleOrientation as EventListener);
+    window.addEventListener("deviceorientationabsolute", handleOrientation as EventListener, true);
     window.addEventListener("deviceorientation", handleOrientation as EventListener);
 
     return () => {
       navigator.geolocation.clearWatch(watchId);
-      window.removeEventListener("deviceorientationabsolute", handleOrientation as EventListener);
+      window.removeEventListener("deviceorientationabsolute", handleOrientation as EventListener, true);
       window.removeEventListener("deviceorientation", handleOrientation as EventListener);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       marker?.remove();
       markerRef.current = null;
     };
