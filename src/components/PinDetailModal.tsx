@@ -10,6 +10,8 @@ import {
   FaThumbsDown,
   FaShieldAlt,
   FaHandsHelping,
+  FaReply,
+  FaComment,
 } from "react-icons/fa";
 import type { Pin } from "./MapView";
 import { getCategoryById } from "./categories";
@@ -24,6 +26,14 @@ import {
   fetchVotes,
   type VoteTally,
 } from "../lib/pins";
+import {
+  fetchComments,
+  createComment,
+  fetchWatcherIdentity,
+  type Comment,
+} from "../lib/comments";
+
+const MAX_COMMENT_LENGTH = 200;
 
 interface PinDetailModalProps {
   pin: Pin;
@@ -53,11 +63,37 @@ export default function PinDetailModal({
   const [votingLoading, setVotingLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Comments state
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(true);
+  const [commentText, setCommentText] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+
+  // Watcher identity for pending resolution
+  const [pendingWatcherName, setPendingWatcherName] = useState<string | null>(null);
+
   useEffect(() => {
     if (isPending && user) {
       fetchVotes(pin.id, user.id).then(setVotes).catch(console.error);
     }
   }, [isPending, pin.id, user]);
+
+  useEffect(() => {
+    fetchComments(pin.id)
+      .then(setComments)
+      .catch(console.error)
+      .finally(() => setCommentsLoading(false));
+  }, [pin.id]);
+
+  useEffect(() => {
+    if (isPending && pin.pendingResolvedBy) {
+      fetchWatcherIdentity(pin.pendingResolvedBy)
+        .then(setPendingWatcherName)
+        .catch(console.error);
+    }
+  }, [isPending, pin.pendingResolvedBy]);
 
   const handlePhotoCapture = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -130,6 +166,59 @@ export default function PinDetailModal({
     [user, pin.id]
   );
 
+  const handleSubmitComment = useCallback(async () => {
+    if (!user || !commentText.trim()) return;
+    setCommentSubmitting(true);
+    try {
+      const userEmail = user.email ?? "";
+      const newComment = await createComment({
+        pinId: pin.id,
+        userId: user.id,
+        body: commentText.trim(),
+        isWatcher: isCommunityWatcher,
+        watcherDisplay: isCommunityWatcher ? (userEmail || "Community Watcher") : undefined,
+      });
+      setComments((prev) => [...prev, newComment]);
+      setCommentText("");
+    } catch (err) {
+      console.error("Comment failed:", err);
+    } finally {
+      setCommentSubmitting(false);
+    }
+  }, [user, commentText, pin.id, isCommunityWatcher]);
+
+  const handleSubmitReply = useCallback(
+    async (parentId: string) => {
+      if (!user || !replyText.trim()) return;
+      setCommentSubmitting(true);
+      try {
+        const userEmail = user.email ?? "";
+        const newReply = await createComment({
+          pinId: pin.id,
+          userId: user.id,
+          body: replyText.trim(),
+          parentId,
+          isWatcher: isCommunityWatcher,
+          watcherDisplay: isCommunityWatcher ? (userEmail || "Community Watcher") : undefined,
+        });
+        setComments((prev) =>
+          prev.map((c) =>
+            c.id === parentId
+              ? { ...c, replies: [...c.replies, newReply] }
+              : c
+          )
+        );
+        setReplyText("");
+        setReplyingTo(null);
+      } catch (err) {
+        console.error("Reply failed:", err);
+      } finally {
+        setCommentSubmitting(false);
+      }
+    },
+    [user, replyText, pin.id, isCommunityWatcher]
+  );
+
   if (!category) return null;
 
   const timeAgo = getTimeAgo(pin.createdAt);
@@ -141,6 +230,11 @@ export default function PinDetailModal({
 
   const totalVotes = votes ? votes.up + votes.down : 0;
   const upPercent = totalVotes > 0 ? Math.round((votes!.up / totalVotes) * 100) : 0;
+
+  const totalCommentCount = comments.reduce(
+    (sum, c) => sum + 1 + c.replies.length,
+    0
+  );
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-end justify-center">
@@ -365,6 +459,30 @@ export default function PinDetailModal({
                   </span>
                 )}
               </div>
+
+              {/* Watcher identity */}
+              {pendingWatcherName && (
+                <div
+                  className={`mb-3 flex items-center gap-2 rounded-lg px-3 py-2 ${
+                    isDark ? "bg-neutral-800/60" : "bg-white/80"
+                  }`}
+                >
+                  <FaShieldAlt
+                    size={11}
+                    className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"}
+                  />
+                  <p
+                    className={`text-xs ${
+                      isDark ? "text-neutral-300" : "text-neutral-600"
+                    }`}
+                  >
+                    Moved to voting by{" "}
+                    <span className="font-semibold">
+                      {pendingWatcherName}
+                    </span>
+                  </p>
+                </div>
+              )}
 
               {pin.resolvedPhotoUrl && (
                 <img
@@ -620,11 +738,332 @@ export default function PinDetailModal({
               </div>
             </div>
           )}
+
+          {/* ────────── Comments Section ────────── */}
+          <div
+            className={`mt-6 border-t pt-4 ${
+              isDark ? "border-neutral-800" : "border-neutral-200"
+            }`}
+          >
+            <div className="mb-4 flex items-center gap-2">
+              <FaComment
+                size={13}
+                className={isDark ? "text-neutral-500" : "text-neutral-400"}
+              />
+              <h3
+                className={`text-sm font-semibold ${
+                  isDark ? "text-white" : "text-neutral-900"
+                }`}
+              >
+                Comments
+                {totalCommentCount > 0 && (
+                  <span
+                    className={`ml-1.5 text-xs font-normal ${
+                      isDark ? "text-neutral-500" : "text-neutral-400"
+                    }`}
+                  >
+                    ({totalCommentCount})
+                  </span>
+                )}
+              </h3>
+            </div>
+
+            {/* Comment input */}
+            {user ? (
+              <div className="mb-4">
+                <div className="relative">
+                  <textarea
+                    value={commentText}
+                    onChange={(e) =>
+                      setCommentText(e.target.value.slice(0, MAX_COMMENT_LENGTH))
+                    }
+                    placeholder="Write a comment..."
+                    rows={2}
+                    maxLength={MAX_COMMENT_LENGTH}
+                    className={`w-full resize-none rounded-xl border py-2.5 px-3 text-sm outline-none transition-colors ${
+                      isDark
+                        ? "border-neutral-700 bg-neutral-800 text-white placeholder-neutral-500 focus:border-[#f5c542]/50"
+                        : "border-neutral-300 bg-neutral-50 text-neutral-900 placeholder-neutral-400 focus:border-[#b8860b]/50"
+                    }`}
+                  />
+                  <span
+                    className={`absolute bottom-2 right-3 text-[10px] ${
+                      commentText.length >= MAX_COMMENT_LENGTH
+                        ? "text-red-400"
+                        : isDark
+                          ? "text-neutral-600"
+                          : "text-neutral-400"
+                    }`}
+                  >
+                    {commentText.length}/{MAX_COMMENT_LENGTH}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span
+                    className={`text-[10px] ${
+                      isDark ? "text-neutral-600" : "text-neutral-400"
+                    }`}
+                  >
+                    {isCommunityWatcher
+                      ? `Posting as ${user.email ?? "Watcher"}`
+                      : "Posting as Anonymous"}
+                  </span>
+                  <button
+                    onClick={handleSubmitComment}
+                    disabled={!commentText.trim() || commentSubmitting}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-40 ${
+                      isDark
+                        ? "bg-[#f5c542] text-black hover:bg-[#e0b23a]"
+                        : "bg-[#b8860b] text-white hover:bg-[#a0750a]"
+                    }`}
+                  >
+                    {commentSubmitting ? "Posting..." : "Post"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p
+                className={`mb-4 text-center text-xs ${
+                  isDark ? "text-neutral-500" : "text-neutral-400"
+                }`}
+              >
+                Sign in to leave a comment
+              </p>
+            )}
+
+            {/* Comments list */}
+            {commentsLoading ? (
+              <div className="flex justify-center py-4">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-500 border-t-transparent" />
+              </div>
+            ) : comments.length === 0 ? (
+              <p
+                className={`py-4 text-center text-xs ${
+                  isDark ? "text-neutral-600" : "text-neutral-400"
+                }`}
+              >
+                No comments yet. Be the first!
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {comments.map((comment) => (
+                  <CommentItem
+                    key={comment.id}
+                    comment={comment}
+                    isDark={isDark}
+                    user={user}
+                    isCommunityWatcher={isCommunityWatcher}
+                    replyingTo={replyingTo}
+                    replyText={replyText}
+                    commentSubmitting={commentSubmitting}
+                    onSetReplyingTo={setReplyingTo}
+                    onSetReplyText={setReplyText}
+                    onSubmitReply={handleSubmitReply}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+// ── Comment Item Component ──
+
+function CommentItem({
+  comment,
+  isDark,
+  user,
+  isCommunityWatcher,
+  replyingTo,
+  replyText,
+  commentSubmitting,
+  onSetReplyingTo,
+  onSetReplyText,
+  onSubmitReply,
+  depth = 0,
+}: {
+  comment: Comment;
+  isDark: boolean;
+  user: { id: string; email?: string | undefined } | null;
+  isCommunityWatcher: boolean;
+  replyingTo: string | null;
+  replyText: string;
+  commentSubmitting: boolean;
+  onSetReplyingTo: (id: string | null) => void;
+  onSetReplyText: (text: string) => void;
+  onSubmitReply: (parentId: string) => void;
+  depth?: number;
+}) {
+  const isReplyOpen = replyingTo === comment.id;
+  const displayName = comment.isWatcher
+    ? comment.watcherDisplay ?? "Community Watcher"
+    : "Anonymous";
+
+  return (
+    <div
+      className={depth > 0 ? "ml-6" : ""}
+    >
+      <div
+        className={`rounded-xl p-3 ${
+          isDark ? "bg-neutral-800/50" : "bg-neutral-50"
+        }`}
+      >
+        {/* Comment header */}
+        <div className="mb-1.5 flex items-center gap-2">
+          {comment.isWatcher && (
+            <FaShieldAlt
+              size={9}
+              className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"}
+            />
+          )}
+          <span
+            className={`text-xs font-semibold ${
+              comment.isWatcher
+                ? isDark
+                  ? "text-[#f5c542]"
+                  : "text-[#b8860b]"
+                : isDark
+                  ? "text-neutral-400"
+                  : "text-neutral-500"
+            }`}
+          >
+            {displayName}
+          </span>
+          <span
+            className={`text-[10px] ${
+              isDark ? "text-neutral-600" : "text-neutral-400"
+            }`}
+          >
+            {getTimeAgo(comment.createdAt)}
+          </span>
+        </div>
+
+        {/* Comment body */}
+        <p
+          className={`text-sm leading-relaxed ${
+            isDark ? "text-neutral-300" : "text-neutral-700"
+          }`}
+        >
+          {comment.body}
+        </p>
+
+        {/* Reply button — only for top-level comments */}
+        {user && depth === 0 && (
+          <button
+            onClick={() =>
+              onSetReplyingTo(isReplyOpen ? null : comment.id)
+            }
+            className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium transition-colors ${
+              isDark
+                ? "text-neutral-500 hover:text-neutral-300"
+                : "text-neutral-400 hover:text-neutral-600"
+            }`}
+          >
+            <FaReply size={9} />
+            Reply
+          </button>
+        )}
+      </div>
+
+      {/* Reply input */}
+      {isReplyOpen && user && (
+        <div className="mt-2 ml-3">
+          <div className="relative">
+            <textarea
+              value={replyText}
+              onChange={(e) =>
+                onSetReplyText(e.target.value.slice(0, MAX_COMMENT_LENGTH))
+              }
+              placeholder="Write a reply..."
+              rows={2}
+              maxLength={MAX_COMMENT_LENGTH}
+              className={`w-full resize-none rounded-xl border py-2 px-3 text-sm outline-none transition-colors ${
+                isDark
+                  ? "border-neutral-700 bg-neutral-800 text-white placeholder-neutral-500 focus:border-[#f5c542]/50"
+                  : "border-neutral-300 bg-neutral-50 text-neutral-900 placeholder-neutral-400 focus:border-[#b8860b]/50"
+              }`}
+            />
+            <span
+              className={`absolute bottom-2 right-3 text-[10px] ${
+                replyText.length >= MAX_COMMENT_LENGTH
+                  ? "text-red-400"
+                  : isDark
+                    ? "text-neutral-600"
+                    : "text-neutral-400"
+              }`}
+            >
+              {replyText.length}/{MAX_COMMENT_LENGTH}
+            </span>
+          </div>
+          <div className="mt-1.5 flex items-center justify-between">
+            <span
+              className={`text-[10px] ${
+                isDark ? "text-neutral-600" : "text-neutral-400"
+              }`}
+            >
+              {isCommunityWatcher
+                ? `Replying as ${user.email ?? "Watcher"}`
+                : "Replying as Anonymous"}
+            </span>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => {
+                  onSetReplyingTo(null);
+                  onSetReplyText("");
+                }}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  isDark
+                    ? "text-neutral-400 hover:text-neutral-200"
+                    : "text-neutral-500 hover:text-neutral-700"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => onSubmitReply(comment.id)}
+                disabled={!replyText.trim() || commentSubmitting}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-all disabled:opacity-40 ${
+                  isDark
+                    ? "bg-[#f5c542] text-black hover:bg-[#e0b23a]"
+                    : "bg-[#b8860b] text-white hover:bg-[#a0750a]"
+                }`}
+              >
+                {commentSubmitting ? "..." : "Reply"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Replies */}
+      {comment.replies.length > 0 && (
+        <div className="mt-2 flex flex-col gap-2">
+          {comment.replies.map((reply) => (
+            <CommentItem
+              key={reply.id}
+              comment={reply}
+              isDark={isDark}
+              user={user}
+              isCommunityWatcher={isCommunityWatcher}
+              replyingTo={replyingTo}
+              replyText={replyText}
+              commentSubmitting={commentSubmitting}
+              onSetReplyingTo={onSetReplyingTo}
+              onSetReplyText={onSetReplyText}
+              onSubmitReply={onSubmitReply}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Helpers ──
 
 function getTimeAgo(dateStr: string): string {
   const now = new Date();

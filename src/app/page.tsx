@@ -11,7 +11,6 @@ import type { LocationStatus } from "../components/UserLocationTracker";
 import { ThemeContext, type Theme } from "../components/ThemeContext";
 import { useAuth } from "../components/AuthContext";
 import AuthModal from "../components/AuthModal";
-import StatusBar from "../components/StatusBar";
 import ReportButton from "../components/ReportButton";
 import CategorySelector from "../components/CategorySelector";
 import PlacementBanner from "../components/PlacementBanner";
@@ -350,6 +349,21 @@ export default function Home() {
           <FaSearch size={13} />
         </button>
 
+        {/* Dashboard button (watchers only) */}
+        {isCommunityWatcher && user && (
+          <button
+            onClick={() => router.push("/dashboard")}
+            className={`fixed top-4 right-40 z-[1000] flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all ${
+              isDark
+                ? "border-[#f5c542]/30 bg-[#f5c542]/10 text-[#f5c542] hover:bg-[#f5c542]/20"
+                : "border-[#b8860b]/30 bg-[#b8860b]/10 text-[#b8860b] hover:bg-[#b8860b]/20"
+            }`}
+            title="Dashboard"
+          >
+            <FaTachometerAlt size={13} />
+          </button>
+        )}
+
         {/* Auth / User button */}
         <div className="fixed top-4 right-28 z-[1000]" ref={userMenuRef}>
           {user ? (
@@ -383,22 +397,6 @@ export default function Home() {
                     {user.email}
                   </div>
                   <div className={`border-t ${isDark ? "border-neutral-800" : "border-neutral-100"}`} />
-                  {isCommunityWatcher && (
-                    <button
-                      onClick={() => {
-                        setShowUserMenu(false);
-                        router.push("/dashboard");
-                      }}
-                      className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors ${
-                        isDark
-                          ? "text-neutral-300 hover:bg-neutral-800"
-                          : "text-neutral-700 hover:bg-neutral-50"
-                      }`}
-                    >
-                      <FaTachometerAlt size={11} className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"} />
-                      Dashboard
-                    </button>
-                  )}
                   <button
                     onClick={() => {
                       setShowUserMenu(false);
@@ -430,8 +428,6 @@ export default function Home() {
             </button>
           )}
         </div>
-
-        <StatusBar pins={pins} />
 
         {/* Map overlay toggles */}
         <div className="fixed bottom-[4.5rem] left-6 z-[1000] flex flex-col gap-2">
