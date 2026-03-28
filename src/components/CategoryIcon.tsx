@@ -14,6 +14,7 @@ import {
   FaVolumeUp,
   FaDog,
   FaSmog,
+  FaEllipsisH,
 } from "react-icons/fa";
 import type { IconType } from "react-icons";
 
@@ -31,6 +32,7 @@ const ICON_MAP: Record<string, IconType> = {
   FaVolumeUp,
   FaDog,
   FaSmog,
+  FaEllipsisH,
 };
 
 interface CategoryIconProps {

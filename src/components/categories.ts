@@ -131,6 +131,17 @@ export const CATEGORIES: Category[] = [
     group: "Waste & Pollution",
     severity: 4,
   },
+
+  // Other
+  {
+    id: "other",
+    label: "Other",
+    icon: "FaEllipsisH",
+    color: "#6b7280", // gray
+    sdg: 0,
+    group: "Other",
+    severity: 2,
+  },
 ];
 
 export const CATEGORY_GROUPS = [...new Set(CATEGORIES.map((c) => c.group))];
