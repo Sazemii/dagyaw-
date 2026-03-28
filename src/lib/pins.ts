@@ -175,3 +175,50 @@ export async function getMunicipalityStats(
     total: rows.length,
   };
 }
+
+/** Detailed stats for the city stats overlay */
+export interface CityDetailedStats {
+  municipality: string;
+  active: number;
+  resolved: number;
+  total: number;
+  resolutionRate: number;
+  categoryBreakdown: { categoryId: string; count: number }[];
+  mostRecentReport: string | null;
+}
+
+export async function getCityDetailedStats(
+  municipality: string
+): Promise<CityDetailedStats> {
+  const { data, error } = await supabase
+    .from("pins")
+    .select("status, category_id, created_at")
+    .ilike("municipality", `%${municipality}%`)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`City stats failed: ${error.message}`);
+
+  const rows = data ?? [];
+  const active = rows.filter((p) => p.status === "active").length;
+  const resolved = rows.filter((p) => p.status === "resolved").length;
+  const total = rows.length;
+
+  // Category breakdown — top categories by count
+  const catMap = new Map<string, number>();
+  for (const row of rows) {
+    catMap.set(row.category_id, (catMap.get(row.category_id) ?? 0) + 1);
+  }
+  const categoryBreakdown = [...catMap.entries()]
+    .map(([categoryId, count]) => ({ categoryId, count }))
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    municipality,
+    active,
+    resolved,
+    total,
+    resolutionRate: total > 0 ? Math.round((resolved / total) * 100) : 0,
+    categoryBreakdown,
+    mostRecentReport: rows[0]?.created_at ?? null,
+  };
+}

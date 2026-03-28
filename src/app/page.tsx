@@ -16,6 +16,7 @@ import PinDetailModal from "../components/PinDetailModal";
 import LocateButton from "../components/LocateButton";
 import { FaSun, FaMoon, FaSearch } from "react-icons/fa";
 import MunicipalitySearch from "../components/MunicipalitySearch";
+import CityStats from "../components/CityStats";
 
 const MapView = dynamic(() => import("../components/MapView"), { ssr: false });
 
@@ -32,6 +33,7 @@ export default function Home() {
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
   const [showSearch, setShowSearch] = useState(false);
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [cityStatsName, setCityStatsName] = useState<string | null>(null);
 
   const isDark = theme === "dark";
 
@@ -124,9 +126,10 @@ export default function Home() {
   }, []);
 
   const handleSelectMunicipality = useCallback(
-    (_name: string, lat: number, lng: number) => {
+    (name: string, lat: number, lng: number) => {
       setFlyTarget({ lat, lng });
       setShowSearch(false);
+      setCityStatsName(name);
     },
     []
   );
@@ -216,6 +219,13 @@ export default function Home() {
           <MunicipalitySearch
             onClose={() => setShowSearch(false)}
             onSelectMunicipality={handleSelectMunicipality}
+          />
+        )}
+
+        {cityStatsName && (
+          <CityStats
+            municipalityName={cityStatsName}
+            onClose={() => setCityStatsName(null)}
           />
         )}
       </main>

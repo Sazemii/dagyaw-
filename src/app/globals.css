@@ -171,6 +171,23 @@ body {
   animation: slide-up 0.3s ease-out;
 }
 
+/* ===== City stats reveal animation ===== */
+@keyframes stat-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stat-reveal {
+  opacity: 0;
+  animation: stat-reveal 0.5s ease-out forwards;
+}
+
 /* ===== Scrollbar ===== */
 ::-webkit-scrollbar {
   width: 6px;
