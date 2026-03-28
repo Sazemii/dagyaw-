@@ -14,7 +14,8 @@ import PlacementBanner from "../components/PlacementBanner";
 import ReportForm from "../components/ReportForm";
 import PinDetailModal from "../components/PinDetailModal";
 import LocateButton from "../components/LocateButton";
-import { FaSun, FaMoon } from "react-icons/fa";
+import { FaSun, FaMoon, FaSearch } from "react-icons/fa";
+import MunicipalitySearch from "../components/MunicipalitySearch";
 
 const MapView = dynamic(() => import("../components/MapView"), { ssr: false });
 
@@ -29,6 +30,8 @@ export default function Home() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [locateTrigger, setLocateTrigger] = useState(0);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
+  const [showSearch, setShowSearch] = useState(false);
+  const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number } | null>(null);
 
   const isDark = theme === "dark";
 
@@ -120,6 +123,14 @@ export default function Home() {
     setLocationStatus(status);
   }, []);
 
+  const handleSelectMunicipality = useCallback(
+    (_name: string, lat: number, lng: number) => {
+      setFlyTarget({ lat, lng });
+      setShowSearch(false);
+    },
+    []
+  );
+
   return (
     <ThemeContext value={theme}>
       <main
@@ -134,6 +145,7 @@ export default function Home() {
           isPlacingPin={mode === "placing"}
           locateTrigger={locateTrigger}
           onLocationStatus={handleLocationStatus}
+          flyTarget={flyTarget}
         />
 
         {/* Vignette */}
@@ -149,6 +161,18 @@ export default function Home() {
           }`}
         >
           {isDark ? <FaSun size={14} /> : <FaMoon size={14} />}
+        </button>
+
+        {/* Search municipality button */}
+        <button
+          onClick={() => setShowSearch(true)}
+          className={`fixed top-4 right-16 z-[1000] flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md transition-all ${
+            isDark
+              ? "border-neutral-700 bg-[#0f0f0f]/80 text-neutral-400 hover:text-[#f5c542]"
+              : "border-neutral-300 bg-white/80 text-neutral-500 hover:text-[#b8860b]"
+          }`}
+        >
+          <FaSearch size={13} />
         </button>
 
         <StatusBar pins={pins} />
@@ -185,6 +209,13 @@ export default function Home() {
             pin={viewingPin}
             onClose={() => setViewingPin(null)}
             onResolve={handleResolvePin}
+          />
+        )}
+
+        {showSearch && (
+          <MunicipalitySearch
+            onClose={() => setShowSearch(false)}
+            onSelectMunicipality={handleSelectMunicipality}
           />
         )}
       </main>

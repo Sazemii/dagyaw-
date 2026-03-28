@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import Map, {
   Marker,
   NavigationControl,
@@ -26,6 +26,8 @@ export interface Pin {
   resolvedComment?: string;
   resolvedAt?: string;
   createdAt: string;
+  barangay?: string;
+  municipality?: string;
 }
 
 interface MapViewProps {
@@ -35,6 +37,7 @@ interface MapViewProps {
   isPlacingPin: boolean;
   locateTrigger: number;
   onLocationStatus: (status: LocationStatus) => void;
+  flyTarget?: { lat: number; lng: number } | null;
 }
 
 const CARTO_DARK_STYLE =
@@ -106,9 +109,21 @@ export default function MapView({
   isPlacingPin,
   locateTrigger,
   onLocationStatus,
+  flyTarget,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const theme = useTheme();
+
+  // Fly to municipality when flyTarget changes
+  useEffect(() => {
+    if (flyTarget && mapRef.current) {
+      mapRef.current.flyTo({
+        center: [flyTarget.lng, flyTarget.lat],
+        zoom: 13,
+        duration: 2000,
+      });
+    }
+  }, [flyTarget]);
 
   const initialView = {
     longitude: 120.9842,

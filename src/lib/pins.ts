@@ -21,6 +21,61 @@ async function uploadPhoto(
   return data.publicUrl;
 }
 
+/**
+ * Reverse geocode lat/lng using Nominatim (zoom=18 for max detail).
+ * Checks all possible address fields for barangay, then falls back
+ * to parsing the display_name which often contains "Barangay X" / "Brgy. X".
+ */
+async function reverseGeocode(
+  lat: number,
+  lng: number
+): Promise<{ barangay: string | null; municipality: string | null }> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`,
+      { headers: { "User-Agent": "Bayanihan-App/1.0" } }
+    );
+    if (!res.ok) return { barangay: null, municipality: null };
+
+    const data = await res.json();
+    const addr = data.address || {};
+
+    // Try every field that could hold a barangay name
+    let barangay: string | null =
+      addr.village ||
+      addr.suburb ||
+      addr.neighbourhood ||
+      addr.quarter ||
+      addr.city_district ||
+      addr.residential ||
+      null;
+
+    // Fallback: parse display_name for "Barangay ..." or "Brgy. ..."
+    if (!barangay && data.display_name) {
+      const parts: string[] = data.display_name.split(",").map((s: string) => s.trim());
+      for (const part of parts) {
+        if (/^(Barangay|Brgy\.?)\s+/i.test(part)) {
+          barangay = part;
+          break;
+        }
+      }
+      // If still nothing, use the second segment (often the barangay in PH addresses)
+      // Format: "Street, Barangay, City, Province, Country"
+      if (!barangay && parts.length >= 3) {
+        barangay = parts[1];
+      }
+    }
+
+    const municipality: string | null =
+      addr.city || addr.municipality || addr.town || addr.county || null;
+
+    return { barangay, municipality };
+  } catch {
+    console.warn("Reverse geocoding failed, pin will be saved without location classification");
+    return { barangay: null, municipality: null };
+  }
+}
+
 /** Fetch all pins from the database */
 export async function fetchPins(): Promise<Pin[]> {
   const { data, error } = await supabase
@@ -42,10 +97,12 @@ export async function fetchPins(): Promise<Pin[]> {
     resolvedComment: row.resolved_comment ?? undefined,
     resolvedAt: row.resolved_at ?? undefined,
     createdAt: row.created_at,
+    barangay: row.barangay ?? undefined,
+    municipality: row.municipality ?? undefined,
   }));
 }
 
-/** Create a new pin (uploads the photo first) */
+/** Create a new pin (uploads the photo first, reverse geocodes location) */
 export async function createPin(input: {
   lat: number;
   lng: number;
@@ -53,7 +110,11 @@ export async function createPin(input: {
   description: string;
   photoDataUrl: string;
 }): Promise<Pin> {
-  const photoUrl = await uploadPhoto(input.photoDataUrl, "reports");
+  // Upload photo and reverse geocode in parallel
+  const [photoUrl, geo] = await Promise.all([
+    uploadPhoto(input.photoDataUrl, "reports"),
+    reverseGeocode(input.lat, input.lng),
+  ]);
 
   const { data, error } = await supabase
     .from("pins")
@@ -64,6 +125,8 @@ export async function createPin(input: {
       description: input.description,
       photo_url: photoUrl,
       status: "active",
+      barangay: geo.barangay,
+      municipality: geo.municipality,
     })
     .select()
     .single();
@@ -79,6 +142,8 @@ export async function createPin(input: {
     photoUrl: data.photo_url,
     status: data.status,
     createdAt: data.created_at,
+    barangay: data.barangay ?? undefined,
+    municipality: data.municipality ?? undefined,
   };
 }
 
@@ -116,5 +181,50 @@ export async function resolvePin(
     resolvedComment: data.resolved_comment ?? undefined,
     resolvedAt: data.resolved_at ?? undefined,
     createdAt: data.created_at,
+    barangay: data.barangay ?? undefined,
+    municipality: data.municipality ?? undefined,
   };
+}
+
+/** Get stats for a specific municipality */
+export interface MunicipalityStats {
+  municipality: string;
+  active: number;
+  resolved: number;
+  total: number;
+}
+
+export async function getMunicipalityStats(
+  municipality: string
+): Promise<MunicipalityStats> {
+  const { data, error } = await supabase
+    .from("pins")
+    .select("status")
+    .ilike("municipality", `%${municipality}%`);
+
+  if (error) throw new Error(`Municipality stats failed: ${error.message}`);
+
+  const rows = data ?? [];
+  return {
+    municipality,
+    active: rows.filter((p) => p.status === "active").length,
+    resolved: rows.filter((p) => p.status === "resolved").length,
+    total: rows.length,
+  };
+}
+
+/** Search for distinct municipalities matching a query */
+export async function searchMunicipalities(
+  query: string
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("pins")
+    .select("municipality")
+    .ilike("municipality", `%${query}%`)
+    .not("municipality", "is", null);
+
+  if (error) throw new Error(`Municipality search failed: ${error.message}`);
+
+  const unique = [...new Set((data ?? []).map((r) => r.municipality as string))];
+  return unique.sort();
 }
