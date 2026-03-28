@@ -9,17 +9,23 @@ import StatusBar from "../components/StatusBar";
 import ReportButton from "../components/ReportButton";
 import CategorySelector from "../components/CategorySelector";
 import PlacementBanner from "../components/PlacementBanner";
+import ReportForm from "../components/ReportForm";
+import PinDetailModal from "../components/PinDetailModal";
+import LocateButton from "../components/LocateButton";
 import { FaSun, FaMoon } from "react-icons/fa";
 
 const MapView = dynamic(() => import("../components/MapView"), { ssr: false });
 
-type Mode = "idle" | "selecting" | "placing";
+type Mode = "idle" | "selecting" | "placing" | "reporting";
 
 export default function Home() {
   const [pins, setPins] = useState<Pin[]>([]);
   const [mode, setMode] = useState<Mode>("idle");
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [viewingPin, setViewingPin] = useState<Pin | null>(null);
   const [theme, setTheme] = useState<Theme>("dark");
+  const [permissionRequested, setPermissionRequested] = useState(false);
 
   const isDark = theme === "dark";
 
@@ -29,6 +35,7 @@ export default function Home() {
     } else {
       setMode("idle");
       setSelectedCategory(null);
+      setPendingLocation(null);
     }
   }, [mode]);
 
@@ -40,25 +47,48 @@ export default function Home() {
   const handleMapClick = useCallback(
     (lat: number, lng: number) => {
       if (mode !== "placing" || !selectedCategory) return;
+      setPendingLocation({ lat, lng });
+      setMode("reporting");
+    },
+    [mode, selectedCategory]
+  );
+
+  const handleReportSubmit = useCallback(
+    (description: string, photoDataUrl: string) => {
+      if (!pendingLocation || !selectedCategory) return;
 
       const newPin: Pin = {
         id: `pin-${Date.now()}`,
-        lat,
-        lng,
+        lat: pendingLocation.lat,
+        lng: pendingLocation.lng,
         categoryId: selectedCategory.id,
+        description,
+        photoDataUrl,
         createdAt: new Date(),
       };
 
       setPins((prev) => [...prev, newPin]);
       setMode("idle");
       setSelectedCategory(null);
+      setPendingLocation(null);
     },
-    [mode, selectedCategory]
+    [pendingLocation, selectedCategory]
   );
+
+  const handlePinClick = useCallback((pin: Pin) => {
+    setViewingPin(pin);
+  }, []);
 
   const handleCancel = useCallback(() => {
     setMode("idle");
     setSelectedCategory(null);
+    setPendingLocation(null);
+  }, []);
+
+  const handleLocate = useCallback(() => {
+    // Trigger permission request (needed for iOS DeviceOrientation)
+    // This must happen from a user gesture
+    setPermissionRequested(true);
   }, []);
 
   return (
@@ -71,7 +101,9 @@ export default function Home() {
         <MapView
           pins={pins}
           onMapClick={handleMapClick}
+          onPinClick={handlePinClick}
           isPlacingPin={mode === "placing"}
+          permissionRequested={permissionRequested}
         />
 
         {/* Vignette */}
@@ -91,6 +123,9 @@ export default function Home() {
 
         <StatusBar pins={pins} />
 
+        {/* Locate me button */}
+        <LocateButton onClick={handleLocate} />
+
         <ReportButton
           isActive={mode !== "idle"}
           onClick={handleReportClick}
@@ -105,6 +140,21 @@ export default function Home() {
 
         {mode === "placing" && selectedCategory && (
           <PlacementBanner category={selectedCategory} onCancel={handleCancel} />
+        )}
+
+        {mode === "reporting" && selectedCategory && (
+          <ReportForm
+            category={selectedCategory}
+            onSubmit={handleReportSubmit}
+            onCancel={handleCancel}
+          />
+        )}
+
+        {viewingPin && (
+          <PinDetailModal
+            pin={viewingPin}
+            onClose={() => setViewingPin(null)}
+          />
         )}
       </main>
     </ThemeContext>

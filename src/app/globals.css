@@ -106,6 +106,12 @@ body {
   pointer-events: none;
 }
 
+/* The entire SVG rotates for heading — smooth CSS transition */
+.gps-icon-svg {
+  transition: transform 0.3s ease-out;
+  will-change: transform;
+}
+
 .gps-pulse-ring {
   animation: gps-pulse 2.5s ease-out infinite;
   transform-origin: center;
@@ -114,10 +120,10 @@ body {
 @keyframes gps-pulse {
   0% {
     r: 18;
-    stroke-opacity: 0.25;
+    stroke-opacity: 0.3;
   }
   100% {
-    r: 45;
+    r: 50;
     stroke-opacity: 0;
   }
 }

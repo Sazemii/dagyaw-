@@ -19,13 +19,17 @@ export interface Pin {
   lat: number;
   lng: number;
   categoryId: string;
+  description: string;
+  photoDataUrl: string;
   createdAt: Date;
 }
 
 interface MapViewProps {
   pins: Pin[];
   onMapClick?: (lat: number, lng: number) => void;
+  onPinClick?: (pin: Pin) => void;
   isPlacingPin: boolean;
+  permissionRequested: boolean;
 }
 
 const CARTO_DARK_STYLE =
@@ -34,7 +38,7 @@ const CARTO_LIGHT_STYLE =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 // --- Pin marker component ---
-function PinMarker({ pin }: { pin: Pin }) {
+function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void }) {
   const category = getCategoryById(pin.categoryId);
   const theme = useTheme();
   if (!category) return null;
@@ -43,7 +47,7 @@ function PinMarker({ pin }: { pin: Pin }) {
 
   return (
     <Marker longitude={pin.lng} latitude={pin.lat} anchor="bottom">
-      <div className="pin-marker">
+      <div className="pin-marker" onClick={(e) => { e.stopPropagation(); onClick?.(pin); }}>
         <svg
           width="40"
           height="52"
@@ -87,7 +91,9 @@ function PinMarker({ pin }: { pin: Pin }) {
 export default function MapView({
   pins,
   onMapClick,
+  onPinClick,
   isPlacingPin,
+  permissionRequested,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const theme = useTheme();
@@ -212,9 +218,9 @@ export default function MapView({
       attributionControl={{}}
     >
       <NavigationControl position="bottom-right" showCompass={false} />
-      <UserLocationTracker />
+      <UserLocationTracker permissionRequested={permissionRequested} />
       {pins.map((pin) => (
-        <PinMarker key={pin.id} pin={pin} />
+        <PinMarker key={pin.id} pin={pin} onClick={onPinClick} />
       ))}
     </Map>
   );
