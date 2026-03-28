@@ -14,7 +14,7 @@ import PlacementBanner from "../components/PlacementBanner";
 import ReportForm from "../components/ReportForm";
 import PinDetailModal from "../components/PinDetailModal";
 import LocateButton from "../components/LocateButton";
-import { FaSun, FaMoon, FaSearch, FaUser, FaShieldAlt, FaSignOutAlt } from "react-icons/fa";
+import { FaSun, FaMoon, FaSearch, FaUser, FaShieldAlt, FaSignOutAlt, FaCheckCircle } from "react-icons/fa";
 import MunicipalitySearch from "../components/MunicipalitySearch";
 import CityStats from "../components/CityStats";
 import { AuthProvider, useAuth } from "../components/AuthContext";
@@ -46,8 +46,12 @@ function HomePage() {
   const [showAuth, setShowAuth] = useState(false);
   const [authPrompt, setAuthPrompt] = useState<string | undefined>(undefined);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showResolved, setShowResolved] = useState(false);
 
   const isDark = theme === "dark";
+
+  // Filter pins based on resolved toggle
+  const visiblePins = showResolved ? pins : pins.filter((p) => p.status !== "resolved");
 
   // Load pins from Supabase on mount
   useEffect(() => {
@@ -175,7 +179,7 @@ function HomePage() {
         }`}
       >
         <MapView
-          pins={pins}
+          pins={visiblePins}
           onMapClick={handleMapClick}
           onPinClick={handlePinClick}
           isPlacingPin={mode === "placing"}
@@ -311,6 +315,28 @@ function HomePage() {
         )}
 
         <StatusBar pins={pins} />
+
+        {/* Show resolved toggle */}
+        <button
+          onClick={() => setShowResolved((v) => !v)}
+          title={showResolved ? "Hide resolved pins" : "Show resolved pins"}
+          className={`fixed bottom-[4.5rem] left-6 z-[1000] flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md transition-all ${
+            showResolved
+              ? isDark
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                : "border-emerald-600/40 bg-emerald-500/10 text-emerald-600"
+              : isDark
+                ? "border-neutral-700 bg-[#0f0f0f]/80 text-neutral-400 hover:bg-[#1a1a1a]"
+                : "border-neutral-300 bg-white/80 text-neutral-500 hover:bg-white"
+          }`}
+          style={{
+            boxShadow: isDark
+              ? "0 2px 12px rgba(0,0,0,0.4)"
+              : "0 2px 12px rgba(0,0,0,0.1)",
+          }}
+        >
+          <FaCheckCircle size={15} />
+        </button>
 
         {/* Locate me button */}
         <LocateButton onClick={handleLocate} status={locationStatus} />

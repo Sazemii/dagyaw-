@@ -98,6 +98,23 @@ body {
   }
 }
 
+/* ===== Pending resolved pulse ===== */
+.pin-pending-pulse {
+  animation: pin-pending-ring 2s ease-out infinite;
+  transform-origin: center;
+}
+
+@keyframes pin-pending-ring {
+  0% {
+    r: 17;
+    stroke-opacity: 0.6;
+  }
+  100% {
+    r: 26;
+    stroke-opacity: 0;
+  }
+}
+
 /* ===== GPS user location ===== */
 .user-location-icon {
   position: relative;

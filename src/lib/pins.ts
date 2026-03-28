@@ -52,24 +52,7 @@ export async function fetchPins(): Promise<Pin[]> {
 
   if (error) throw new Error(`Fetch pins failed: ${error.message}`);
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    lat: row.lat,
-    lng: row.lng,
-    categoryId: row.category_id,
-    description: row.description,
-    photoUrl: row.photo_url,
-    status: row.status,
-    resolvedPhotoUrl: row.resolved_photo_url ?? undefined,
-    resolvedComment: row.resolved_comment ?? undefined,
-    resolvedAt: row.resolved_at ?? undefined,
-    createdAt: row.created_at,
-    municipality: row.municipality ?? undefined,
-    pendingResolvedAt: row.pending_resolved_at ?? undefined,
-    pendingResolvedBy: row.pending_resolved_by ?? undefined,
-    communityResolveRequested: row.community_resolve_requested ?? false,
-    communityResolveBy: row.community_resolve_by ?? undefined,
-  }));
+  return (data ?? []).map(mapRowToPin);
 }
 
 /** Create a new pin (uploads the photo first, reverse geocodes location) */
@@ -102,17 +85,7 @@ export async function createPin(input: {
 
   if (error) throw new Error(`Create pin failed: ${error.message}`);
 
-  return {
-    id: data.id,
-    lat: data.lat,
-    lng: data.lng,
-    categoryId: data.category_id,
-    description: data.description,
-    photoUrl: data.photo_url,
-    status: data.status,
-    createdAt: data.created_at,
-    municipality: data.municipality ?? undefined,
-  };
+  return mapRowToPin(data);
 }
 
 /** Resolve a pin — upload proof photo and mark as resolved */
@@ -137,20 +110,7 @@ export async function resolvePin(
 
   if (error) throw new Error(`Resolve pin failed: ${error.message}`);
 
-  return {
-    id: data.id,
-    lat: data.lat,
-    lng: data.lng,
-    categoryId: data.category_id,
-    description: data.description,
-    photoUrl: data.photo_url,
-    status: data.status,
-    resolvedPhotoUrl: data.resolved_photo_url ?? undefined,
-    resolvedComment: data.resolved_comment ?? undefined,
-    resolvedAt: data.resolved_at ?? undefined,
-    createdAt: data.created_at,
-    municipality: data.municipality ?? undefined,
-  };
+  return mapRowToPin(data);
 }
 
 /** Get stats for a specific municipality from existing pins */
@@ -179,6 +139,218 @@ export async function getMunicipalityStats(
     total: rows.length,
   };
 }
+
+// ============================================================
+// Pin Lifecycle Functions
+// ============================================================
+
+/** Institutional user marks a pin as pending resolved (starts 3-day vote window) */
+export async function markPendingResolved(
+  pinId: string,
+  userId: string
+): Promise<Pin> {
+  const { data, error } = await supabase
+    .from("pins")
+    .update({
+      status: "pending_resolved",
+      pending_resolved_at: new Date().toISOString(),
+      pending_resolved_by: userId,
+    })
+    .eq("id", pinId)
+    .eq("status", "active")
+    .select()
+    .single();
+
+  if (error) throw new Error(`Mark pending resolved failed: ${error.message}`);
+
+  return mapRowToPin(data);
+}
+
+/** Regular user requests community resolve on an active pin */
+export async function requestCommunityResolve(
+  pinId: string,
+  userId: string
+): Promise<Pin> {
+  const { data, error } = await supabase
+    .from("pins")
+    .update({
+      community_resolve_requested: true,
+      community_resolve_by: userId,
+    })
+    .eq("id", pinId)
+    .eq("status", "active")
+    .select()
+    .single();
+
+  if (error) throw new Error(`Community resolve request failed: ${error.message}`);
+
+  return mapRowToPin(data);
+}
+
+/** Institutional user approves a community resolve → triggers 3-day pending window */
+export async function approveCommunityResolve(
+  pinId: string,
+  userId: string
+): Promise<Pin> {
+  const { data, error } = await supabase
+    .from("pins")
+    .update({
+      status: "pending_resolved",
+      pending_resolved_at: new Date().toISOString(),
+      pending_resolved_by: userId,
+    })
+    .eq("id", pinId)
+    .eq("community_resolve_requested", true)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Approve community resolve failed: ${error.message}`);
+
+  return mapRowToPin(data);
+}
+
+/** Institutional user rejects a community resolve request */
+export async function rejectCommunityResolve(pinId: string): Promise<Pin> {
+  const { data, error } = await supabase
+    .from("pins")
+    .update({
+      community_resolve_requested: false,
+      community_resolve_by: null,
+    })
+    .eq("id", pinId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Reject community resolve failed: ${error.message}`);
+
+  return mapRowToPin(data);
+}
+
+/** Cast a vote (up/down) on a pending resolved pin. Uses upsert for one-vote-per-user. */
+export async function castVote(
+  pinId: string,
+  userId: string,
+  vote: "up" | "down"
+): Promise<void> {
+  const { error } = await supabase
+    .from("votes")
+    .upsert(
+      { pin_id: pinId, user_id: userId, vote },
+      { onConflict: "pin_id,user_id" }
+    );
+
+  if (error) throw new Error(`Cast vote failed: ${error.message}`);
+}
+
+/** Get vote tally for a pin */
+export interface VoteTally {
+  up: number;
+  down: number;
+  total: number;
+  userVote: "up" | "down" | null;
+}
+
+export async function getVotes(
+  pinId: string,
+  userId?: string
+): Promise<VoteTally> {
+  const { data, error } = await supabase
+    .from("votes")
+    .select("vote, user_id")
+    .eq("pin_id", pinId);
+
+  if (error) throw new Error(`Get votes failed: ${error.message}`);
+
+  const rows = data ?? [];
+  const up = rows.filter((r) => r.vote === "up").length;
+  const down = rows.filter((r) => r.vote === "down").length;
+  const userRow = userId ? rows.find((r) => r.user_id === userId) : null;
+
+  return {
+    up,
+    down,
+    total: up + down,
+    userVote: (userRow?.vote as "up" | "down") ?? null,
+  };
+}
+
+/** Fetch pins filtered by municipality for dashboard use */
+export async function fetchPinsByMunicipality(
+  municipality: string
+): Promise<Pin[]> {
+  const { data, error } = await supabase
+    .from("pins")
+    .select("*")
+    .ilike("municipality", `%${municipality}%`)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`Fetch municipality pins failed: ${error.message}`);
+
+  return (data ?? []).map(mapRowToPin);
+}
+
+/** Fetch pending community resolve requests for a municipality */
+export async function fetchCommunityResolveRequests(
+  municipality: string
+): Promise<Pin[]> {
+  const { data, error } = await supabase
+    .from("pins")
+    .select("*")
+    .ilike("municipality", `%${municipality}%`)
+    .eq("status", "active")
+    .eq("community_resolve_requested", true)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(`Fetch community resolves failed: ${error.message}`);
+
+  return (data ?? []).map(mapRowToPin);
+}
+
+/** Fetch pending resolved pins for a municipality (in voting window) */
+export async function fetchPendingResolvedPins(
+  municipality: string
+): Promise<Pin[]> {
+  const { data, error } = await supabase
+    .from("pins")
+    .select("*")
+    .ilike("municipality", `%${municipality}%`)
+    .eq("status", "pending_resolved")
+    .order("pending_resolved_at", { ascending: true });
+
+  if (error) throw new Error(`Fetch pending resolved failed: ${error.message}`);
+
+  return (data ?? []).map(mapRowToPin);
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+
+/** Map a Supabase row to a Pin object */
+function mapRowToPin(row: Record<string, unknown>): Pin {
+  return {
+    id: row.id as string,
+    lat: row.lat as number,
+    lng: row.lng as number,
+    categoryId: row.category_id as string,
+    description: row.description as string,
+    photoUrl: row.photo_url as string,
+    status: row.status as Pin["status"],
+    resolvedPhotoUrl: (row.resolved_photo_url as string) ?? undefined,
+    resolvedComment: (row.resolved_comment as string) ?? undefined,
+    resolvedAt: (row.resolved_at as string) ?? undefined,
+    createdAt: row.created_at as string,
+    municipality: (row.municipality as string) ?? undefined,
+    pendingResolvedAt: (row.pending_resolved_at as string) ?? undefined,
+    pendingResolvedBy: (row.pending_resolved_by as string) ?? undefined,
+    communityResolveRequested: (row.community_resolve_requested as boolean) ?? false,
+    communityResolveBy: (row.community_resolve_by as string) ?? undefined,
+  };
+}
+
+// ============================================================
+// Stats
+// ============================================================
 
 /** Detailed stats for the city stats overlay */
 export interface CityDetailedStats {

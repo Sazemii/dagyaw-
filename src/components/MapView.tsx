@@ -54,17 +54,31 @@ function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void })
   const theme = useTheme();
   if (!category) return null;
 
+  const isDark = theme === "dark";
   const isResolved = pin.status === "resolved";
+  const isPending = pin.status === "pending_resolved";
+
+  const strokeColor = isResolved
+    ? "#22c55e"
+    : isPending
+      ? "#f59e0b"
+      : category.color;
+
   const circleFill = isResolved
     ? "#d1fae5"
-    : theme === "dark"
-      ? "#1a1a1a"
-      : "#ffffff";
-  const strokeColor = isResolved ? "#22c55e" : category.color;
+    : isPending
+      ? (isDark ? "#1a1500" : "#fffbeb")
+      : (isDark ? "#1a1a1a" : "#ffffff");
+
+  const opacity = isResolved ? 0.5 : 1;
 
   return (
     <Marker longitude={pin.lng} latitude={pin.lat} anchor="bottom">
-      <div className="pin-marker" onClick={(e) => { e.stopPropagation(); onClick?.(pin); }}>
+      <div
+        className="pin-marker"
+        style={{ opacity }}
+        onClick={(e) => { e.stopPropagation(); onClick?.(pin); }}
+      >
         <svg
           width="40"
           height="52"
@@ -72,6 +86,18 @@ function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void })
           fill="none"
           className="pin-drop"
         >
+          {/* Pulse ring for pending resolved */}
+          {isPending && (
+            <circle
+              cx="20"
+              cy="19"
+              r="17"
+              fill="none"
+              stroke="#f59e0b"
+              strokeWidth="2"
+              className="pin-pending-pulse"
+            />
+          )}
           <polygon points="14,34 26,34 20,50" fill={strokeColor} />
           <circle
             cx="20"
@@ -93,7 +119,7 @@ function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void })
             >
               <CategoryIcon
                 iconName={category.icon}
-                color={category.color}
+                color={isResolved ? "#22c55e" : isPending ? "#f59e0b" : category.color}
                 size={16}
               />
             </div>
