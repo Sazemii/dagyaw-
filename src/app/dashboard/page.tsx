@@ -11,24 +11,13 @@ import {
 } from "../../lib/pins";
 import type { Pin } from "../../components/MapView";
 import { getCategoryById } from "../../components/categories";
-import CategoryIcon from "../../components/CategoryIcon";
 import {
-  FaArrowLeft,
-  FaSun,
-  FaMoon,
   FaSearch,
-  FaMapMarkerAlt,
-  FaChartBar,
-  FaClock,
-  FaShieldAlt,
-  FaCheckCircle,
-  FaExclamationCircle,
-  FaFileAlt,
-  FaSpinner,
-  FaExclamationTriangle,
-  FaLightbulb,
-  FaTimes,
+  FaBell,
+  FaCog,
+  FaCircle,
 } from "react-icons/fa";
+import { HiSparkles } from "react-icons/hi2";
 import type { MunicipalityReport } from "../../lib/insights/types";
 
 interface Place {
@@ -82,57 +71,108 @@ async function searchPlaces(query: string): Promise<Place[]> {
     );
 }
 
-function formatTimeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
-  return `${Math.floor(days / 30)}mo ago`;
+/* ── Stat Card ── */
+function StatCard({
+  label,
+  value,
+  subtitle,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  subtitle: string;
+  color: string;
+}) {
+  return (
+    <div
+      className="bg-[#141414] rounded overflow-hidden pl-[22px] pr-5 py-5 flex flex-col gap-1"
+      style={{ borderLeft: `2px solid ${color}` }}
+    >
+      <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#a6acb3]">
+        {label}
+      </span>
+      <span
+        className="text-[30px] font-black leading-9"
+        style={{ color }}
+      >
+        {value}
+      </span>
+      <span className="text-[10px] text-[#a6acb3]/70">{subtitle}</span>
+    </div>
+  );
 }
 
-function ResolutionRing({ rate }: { rate: number }) {
-  const radius = 44;
-  const stroke = 7;
-  const circumference = 2 * Math.PI * radius;
-  const filled = (rate / 100) * circumference;
-  const remaining = circumference - filled;
+/* ── Bar Chart ── */
+const CHART_DATA = [
+  { day: "MON", filled: 32, overlay: 96 },
+  { day: "TUE", filled: 48, overlay: 64 },
+  { day: "WED", filled: 22, overlay: 109 },
+  { day: "THU", filled: 58, overlay: 73 },
+  { day: "FRI", filled: 87, overlay: 44 },
+  { day: "SAT", filled: 16, overlay: 32 },
+  { day: "SUN", filled: 8, overlay: 24 },
+];
 
+function BarChart() {
+  const maxH = 130;
   return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg width="110" height="110" viewBox="0 0 110 110">
-        <circle
-          cx="55"
-          cy="55"
-          r={radius}
-          fill="none"
-          stroke="#262626"
-          strokeWidth={stroke}
-        />
-        <circle
-          cx="55"
-          cy="55"
-          r={radius}
-          fill="none"
-          stroke="#22c55e"
-          strokeWidth={stroke}
-          strokeDasharray={`${filled} ${remaining}`}
-          strokeDashoffset={circumference * 0.25}
-          strokeLinecap="round"
-          className="transition-all duration-1000 ease-out"
-          style={{ filter: "drop-shadow(0 0 6px rgba(34,197,94,0.3))" }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-bold tabular-nums text-white leading-none">
-          {rate}%
+    <div className="flex items-end justify-between px-2 h-full">
+      {CHART_DATA.map((bar) => {
+        const totalH = bar.filled + bar.overlay;
+        const scale = maxH / Math.max(...CHART_DATA.map((b) => b.filled + b.overlay));
+        return (
+          <div
+            key={bar.day}
+            className="flex flex-col gap-1 items-center flex-1 justify-end h-full"
+          >
+            <div
+              className="w-full rounded-sm bg-[#fdd400]/20"
+              style={{ height: bar.overlay * scale }}
+            />
+            <div
+              className="w-full rounded-sm bg-[#fdd400]"
+              style={{ height: bar.filled * scale }}
+            />
+            <span className="text-[9px] text-[#a6acb3] text-center pt-2">
+              {bar.day}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Category Progress Bar ── */
+function CategoryBar({
+  label,
+  value,
+  color,
+  percent,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  percent: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span
+          className="text-[10px] font-bold uppercase tracking-[-0.5px]"
+          style={{ color }}
+        >
+          {label}
         </span>
-        <span className="mt-1 text-[9px] font-medium uppercase tracking-wider text-neutral-500">
-          resolved
+        <span className="text-[10px] text-[#e0e6ed] uppercase tracking-[-0.5px]">
+          {value}
         </span>
+      </div>
+      <div className="h-1 w-full bg-black rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${percent}%`, backgroundColor: color }}
+        />
       </div>
     </div>
   );
@@ -141,9 +181,6 @@ function ResolutionRing({ rate }: { rate: number }) {
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading, isCommunityWatcher } = useAuth();
-
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const isDark = theme === "dark";
 
   // Municipality search
   const [query, setQuery] = useState("");
@@ -160,8 +197,6 @@ export default function DashboardPage() {
   // Report generation
   const [report, setReport] = useState<MunicipalityReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
-  const [reportError, setReportError] = useState<string | null>(null);
-  const [showReport, setShowReport] = useState(true);
 
   // Load saved municipality from user metadata
   useEffect(() => {
@@ -185,12 +220,9 @@ export default function DashboardPage() {
         setStats(statsData);
         setPins(pinsData);
 
-        // Auto-generate report when data loads
         if (statsData.total > 0) {
           setReportLoading(true);
-          setReportError(null);
           setReport(null);
-          setShowReport(true);
 
           fetch("/api/report", {
             method: "POST",
@@ -202,11 +234,7 @@ export default function DashboardPage() {
               return res.json();
             })
             .then((data) => setReport(data.report))
-            .catch((err) =>
-              setReportError(
-                err instanceof Error ? err.message : "Failed to generate report"
-              )
-            )
+            .catch(() => {})
             .finally(() => setReportLoading(false));
         }
       })
@@ -252,7 +280,6 @@ export default function DashboardPage() {
       setMunicipality(place.name);
       setSuggestions([]);
 
-      // Persist to user metadata
       await supabase.auth.updateUser({
         data: { dashboard_municipality: place.name },
       });
@@ -260,686 +287,349 @@ export default function DashboardPage() {
     []
   );
 
-  const recentPins = useMemo(() => pins.slice(0, 8), [pins]);
+  // Derived data
+  const activeCount = stats?.active ?? 124;
+  const resolvedCount = stats?.resolved ?? 1208;
+  const totalPins = pins.length;
+
+  const categoryBreakdown = useMemo(() => {
+    if (stats?.categoryBreakdown && stats.categoryBreakdown.length > 0) {
+      return stats.categoryBreakdown.slice(0, 4).map((item) => {
+        const cat = getCategoryById(item.categoryId);
+        return {
+          label: cat?.label ?? item.categoryId,
+          count: item.count,
+          color: cat?.color ?? "#a6acb3",
+          percent: stats.total > 0 ? Math.round((item.count / stats.total) * 100) : 0,
+        };
+      });
+    }
+    // Default placeholder data
+    return [
+      { label: "Flooding", count: 42, color: "#ee7d77", percent: 85 },
+      { label: "Pothole", count: 28, color: "#fdd400", percent: 60 },
+      { label: "Illegal Dumping", count: 19, color: "#b0c6ff", percent: 40 },
+      { label: "Others", count: 12, color: "#a6acb3", percent: 25 },
+    ];
+  }, [stats]);
+
+  // AI insights from report
+  const insights = useMemo(() => {
+    if (report) {
+      const items: { text: React.ReactNode; bordered: boolean }[] = [];
+      if (report.biggestProblems?.[0]) {
+        items.push({
+          text: (
+            <span>
+              {report.biggestProblems[0].explanation.slice(0, 120)}
+              {report.biggestProblems[0].explanation.length > 120 ? "..." : ""}
+            </span>
+          ),
+          bordered: true,
+        });
+      }
+      if (report.overallAssessment) {
+        items.push({
+          text: (
+            <span>{report.overallAssessment.slice(0, 120)}{report.overallAssessment.length > 120 ? "..." : ""}</span>
+          ),
+          bordered: true,
+        });
+      }
+      if (report.congestionAnalysis) {
+        items.push({
+          text: (
+            <span className="text-[#a6acb3]">
+              {report.congestionAnalysis.slice(0, 120)}{report.congestionAnalysis.length > 120 ? "..." : ""}
+            </span>
+          ),
+          bordered: false,
+        });
+      }
+      return items;
+    }
+    // Default placeholder insights
+    return [
+      {
+        text: (
+          <span>
+            Current flood trajectory indicates high risk for{" "}
+            <span className="font-bold">District 3</span> residential areas.
+            Immediate drainage clearing recommended.
+          </span>
+        ),
+        bordered: true,
+      },
+      {
+        text: (
+          <span>
+            Report volume has increased by{" "}
+            <span className="font-bold text-[#ee7d77]">12%</span> in the last 4
+            hours, primarily focused on road infrastructure issues.
+          </span>
+        ),
+        bordered: true,
+      },
+      {
+        text: (
+          <span className="text-[#a6acb3]">
+            Pattern matching suggests potential illegal dumping correlation with
+            construction activity near Commonwealth Avenue.
+          </span>
+        ),
+        bordered: false,
+      },
+    ];
+  }, [report]);
+
+  // Most recent pin for the "Live Ops Feed"
+  const latestPin = useMemo(() => {
+    if (pins.length > 0) {
+      const pin = pins[0];
+      const cat = getCategoryById(pin.categoryId);
+      return {
+        category: cat?.label ?? pin.categoryId,
+        location: pin.description?.slice(0, 30) || "Unknown location",
+        status: pin.status === "resolved" ? "Contained" : "Uncontained",
+        isActive: pin.status !== "resolved",
+      };
+    }
+    return {
+      category: "Major Flooding",
+      location: "Brgy. Libis",
+      status: "Uncontained",
+      isActive: true,
+    };
+  }, [pins]);
 
   if (authLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#0a0a0a]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#f5c542] border-t-transparent" />
+      <div className="flex h-screen items-center justify-center bg-black">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#fdd400] border-t-transparent" />
       </div>
     );
   }
 
   if (!user || !isCommunityWatcher) return null;
 
-  const bgPrimary = isDark ? "bg-[#0a0a0a]" : "bg-[#f5f5f5]";
-  const bgCard = isDark ? "bg-[#141414]" : "bg-white";
-  const borderColor = isDark ? "border-neutral-800" : "border-neutral-200";
-  const textPrimary = isDark ? "text-white" : "text-neutral-900";
-  const textSecondary = isDark ? "text-neutral-400" : "text-neutral-500";
-  const textMuted = isDark ? "text-neutral-600" : "text-neutral-400";
-
   return (
-    <div className={`min-h-screen ${bgPrimary}`}>
-      {/* Header */}
-      <header
-        className={`sticky top-0 z-50 border-b backdrop-blur-xl ${borderColor} ${
-          isDark ? "bg-[#0a0a0a]/90" : "bg-[#f5f5f5]/90"
-        }`}
-      >
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.push("/")}
-              className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
-                isDark
-                  ? "bg-neutral-800 text-neutral-400 hover:text-white"
-                  : "bg-neutral-100 text-neutral-500 hover:text-neutral-800"
-              }`}
-            >
-              <FaArrowLeft size={12} />
-            </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <FaShieldAlt
-                  size={12}
-                  className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"}
-                />
-                <h1 className={`text-sm font-bold ${textPrimary}`}>
-                  Community Watcher
-                </h1>
-              </div>
-              <p className={`text-[10px] ${textMuted}`}>
-                {user.email}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setTheme(isDark ? "light" : "dark")}
-            className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
-              isDark
-                ? "bg-neutral-800 text-neutral-400 hover:text-[#f5c542]"
-                : "bg-neutral-100 text-neutral-500 hover:text-[#b8860b]"
-            }`}
+    <div className="h-screen bg-black flex flex-col overflow-hidden">
+      {/* ── Header ── */}
+      <header className="shrink-0 flex items-center justify-between px-8 py-4 border-b border-[#2a2d30]">
+        <div className="flex items-center gap-8">
+          <span
+            className="text-[20px] font-black uppercase tracking-[-1px] text-[#fdd400] cursor-pointer"
+            onClick={() => router.push("/")}
           >
-            {isDark ? <FaSun size={13} /> : <FaMoon size={13} />}
-          </button>
-        </div>
-      </header>
+            DAGYAW
+          </span>
 
-      <main className="mx-auto max-w-3xl px-4 py-6">
-        {/* Municipality Selector */}
-        <div className="mb-6">
-          <label
-            className={`mb-2 block text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
-          >
-            Your Jurisdiction
-          </label>
+          {/* Search */}
           <div className="relative">
             <FaSearch
-              size={13}
-              className={`absolute left-3 top-1/2 -translate-y-1/2 ${
-                isDark ? "text-neutral-500" : "text-neutral-400"
-              }`}
+              size={10}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7280]"
             />
             <input
               type="text"
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
-              placeholder="Search your city or municipality..."
-              className={`w-full rounded-xl border py-2.5 pl-10 pr-3 text-sm outline-none transition-colors ${
-                isDark
-                  ? "border-neutral-700 bg-neutral-800 text-white placeholder-neutral-500 focus:border-[#f5c542]/50"
-                  : "border-neutral-300 bg-white text-neutral-900 placeholder-neutral-400 focus:border-[#b8860b]/50"
-              }`}
+              placeholder="Search operational grid..."
+              className="w-[256px] bg-black border border-[#2a2d30] rounded text-[12px] text-[#e0e6ed] placeholder-[#6b7280] pl-10 pr-4 py-2.5 outline-none focus:border-[#fdd400]/40 transition-colors"
+            />
+            {/* Search suggestions dropdown */}
+            {suggestions.length > 0 && (
+              <div className="absolute top-full mt-1 left-0 w-full bg-[#141414] border border-[#2a2d30] rounded z-50 max-h-48 overflow-y-auto">
+                {suggestions.map((place, i) => (
+                  <button
+                    key={`${place.name}-${i}`}
+                    onClick={() => handleSelectMunicipality(place)}
+                    className="w-full text-left px-3 py-2 text-[11px] text-[#a6acb3] hover:bg-[#1a1a1a] hover:text-[#e0e6ed] transition-colors"
+                  >
+                    <p className="font-medium text-[#e0e6ed] truncate">{place.name}</p>
+                    <p className="text-[10px] text-[#6b7280] truncate">{place.displayName}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
+            <button className="text-[#a6acb3] hover:text-[#e0e6ed] transition-colors">
+              <FaBell size={16} />
+            </button>
+            <button className="text-[#a6acb3] hover:text-[#e0e6ed] transition-colors">
+              <FaCog size={16} />
+            </button>
+          </div>
+          <div className="w-8 h-8 rounded-xl bg-[#1a1a1a] border border-[#2a2d30] overflow-hidden flex items-center justify-center">
+            {user.user_metadata?.avatar_url ? (
+              <img
+                src={user.user_metadata.avatar_url}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-[11px] font-bold text-[#a6acb3]">
+                {user.email?.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* ── Dashboard Content ── */}
+      <main className="flex-1 min-h-0 overflow-hidden p-8">
+        <div className="h-full grid grid-cols-12 gap-6 grid-rows-[auto_1fr_minmax(0,1fr)_auto]">
+          {/* Row 1: Stat Cards */}
+          <div className="col-span-12 grid grid-cols-4 gap-4">
+            <StatCard
+              label="Active"
+              value={stats ? stats.active : 124}
+              subtitle="New or urgent"
+              color="#ee7d77"
+            />
+            <StatCard
+              label="Pending"
+              value={stats ? Math.max(0, stats.total - stats.active - stats.resolved) : 42}
+              subtitle="In 3-day window"
+              color="#fdd400"
+            />
+            <StatCard
+              label="Resolved"
+              value={stats ? stats.resolved.toLocaleString() : "1,208"}
+              subtitle="Total this month"
+              color="#b0c6ff"
+            />
+            <StatCard
+              label="Requests"
+              value={18}
+              subtitle="Need approval"
+              color="rgba(253,212,0,0.4)"
             />
           </div>
 
-          {/* Search suggestions */}
-          {suggestions.length > 0 && (
-            <div
-              className={`mt-2 overflow-hidden rounded-xl border ${borderColor} ${bgCard}`}
-            >
-              {suggestions.map((place, i) => (
-                <button
-                  key={`${place.name}-${i}`}
-                  onClick={() => handleSelectMunicipality(place)}
-                  className={`flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-sm transition-colors ${
-                    isDark
-                      ? "text-neutral-300 hover:bg-neutral-800"
-                      : "text-neutral-700 hover:bg-neutral-50"
-                  }`}
-                >
-                  <FaMapMarkerAlt
-                    size={12}
-                    className={`mt-0.5 shrink-0 ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+          {/* Row 2: Map Section */}
+          <div className="col-span-12 bg-[#141414] border border-[#2a2d30] rounded overflow-hidden relative">
+            {/* Map background */}
+            <div className="absolute inset-0">
+              <img
+                src="/map-bg.png"
+                alt=""
+                className="w-full h-full object-cover opacity-30 saturate-0"
+              />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+
+            {/* Live Ops Feed overlay */}
+            <div className="absolute top-6 left-6 backdrop-blur-xl bg-black/60 border border-[#2a2d30] rounded p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FaCircle size={8} className="text-[#ee7d77] animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#ee7d77]">
+                  Live Ops Feed
+                </span>
+              </div>
+              <div className="text-[10px] leading-[16px] text-[#a6acb3]">
+                <p>
+                  {latestPin.category}:{" "}
+                  <span className="text-[#e0e6ed]">{latestPin.location}</span>
+                </p>
+                <p>
+                  Status:{" "}
+                  <span
+                    className={`font-bold ${
+                      latestPin.isActive ? "text-[#ee7d77]" : "text-[#22c55e]"
+                    }`}
+                  >
+                    {latestPin.status}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3: Charts + AI Insights */}
+          <div className="col-span-12 grid grid-cols-12 gap-6 min-h-0">
+            {/* Reports Over Time */}
+            <div className="col-span-4 bg-[#141414] border border-[#2a2d30] rounded p-6 flex flex-col gap-6 min-h-0">
+              <div className="flex items-center justify-between shrink-0">
+                <span className="text-[12px] font-black uppercase tracking-[1.2px] text-[#e0e6ed]">
+                  Reports Over Time
+                </span>
+                <span className="text-[10px] text-[#a6acb3]">LAST 7 DAYS</span>
+              </div>
+              <div className="flex-1 min-h-0">
+                <BarChart />
+              </div>
+            </div>
+
+            {/* Category Breakdown */}
+            <div className="col-span-4 bg-[#141414] border border-[#2a2d30] rounded p-6 flex flex-col gap-6 min-h-0">
+              <span className="text-[12px] font-black uppercase tracking-[1.2px] text-[#e0e6ed] shrink-0">
+                Category Breakdown
+              </span>
+              <div className="flex flex-col gap-4 flex-1 justify-center">
+                {categoryBreakdown.map((cat) => (
+                  <CategoryBar
+                    key={cat.label}
+                    label={cat.label}
+                    value={`${cat.count} Units`}
+                    color={cat.color}
+                    percent={cat.percent}
                   />
-                  <div className="min-w-0">
-                    <p className={`font-medium truncate ${textPrimary}`}>
-                      {place.name}
-                    </p>
-                    <p className={`text-xs truncate ${textMuted}`}>
-                      {place.displayName}
-                    </p>
-                  </div>
-                </button>
-              ))}
+                ))}
+              </div>
             </div>
-          )}
 
-          {searching && (
-            <p className={`mt-2 text-xs ${textMuted}`}>Searching...</p>
-          )}
+            {/* AI Insights */}
+            <div className="col-span-4 bg-[#141414] border border-[#2a2d30] rounded p-6 flex flex-col gap-6 min-h-0">
+              <div className="flex items-center gap-2 shrink-0">
+                <HiSparkles size={13} className="text-[#fdd400]" />
+                <span className="text-[12px] font-black uppercase tracking-[1.2px] text-[#fdd400]">
+                  AI Insights
+                </span>
+              </div>
+              <div className="flex flex-col gap-0 flex-1 justify-start overflow-hidden">
+                {reportLoading ? (
+                  <div className="flex items-center justify-center flex-1">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#fdd400] border-t-transparent" />
+                  </div>
+                ) : (
+                  insights.map((insight, i) => (
+                    <div
+                      key={i}
+                      className={`pl-3 py-2 ${
+                        insight.bordered
+                          ? "border-l-2 border-[#fdd400]/40"
+                          : "pl-3"
+                      } ${i < insights.length - 1 ? "mb-3" : ""}`}
+                    >
+                      <p className="text-[11px] leading-[18px] text-[#e0e6ed]">
+                        {insight.text}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Row 4: Footer */}
+          <div className="col-span-12 border-t border-[#2a2d30]/30 flex items-center justify-center py-4 px-24">
+            <p className="text-[10px] text-center tracking-[0.25px]">
+              <span className="font-bold text-[#fdd400] uppercase">
+                AI Advisory:{" "}
+              </span>
+              <span className="text-[#a6acb3]/50">
+                The data visualizations and priority rankings above are generated
+                with the assistance of AI models. Institutional verification is
+                recommended for all critical emergency responses.
+              </span>
+            </p>
+          </div>
         </div>
-
-        {/* No municipality selected */}
-        {!municipality && !statsLoading && (
-          <div
-            className={`rounded-2xl border p-8 text-center ${borderColor} ${bgCard}`}
-          >
-            <FaMapMarkerAlt size={24} className={`mx-auto mb-3 ${textMuted}`} />
-            <p className={`text-sm font-medium ${textPrimary}`}>
-              Select your municipality
-            </p>
-            <p className={`mt-1 text-xs ${textMuted}`}>
-              Search and select the city or municipality you want to monitor.
-            </p>
-          </div>
-        )}
-
-        {/* Loading */}
-        {statsLoading && (
-          <div className="flex justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#f5c542] border-t-transparent" />
-          </div>
-        )}
-
-        {/* Dashboard content */}
-        {municipality && stats && !statsLoading && (
-          <div className="flex flex-col gap-5">
-            {/* Municipality header */}
-            <div
-              className={`rounded-2xl border p-5 ${borderColor} ${bgCard}`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <FaMapMarkerAlt
-                  size={12}
-                  className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"}
-                />
-                <span
-                  className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
-                >
-                  Jurisdiction
-                </span>
-              </div>
-              <h2 className={`text-xl font-bold ${textPrimary}`}>
-                {stats.municipality}
-              </h2>
-            </div>
-
-            {/* Stats overview */}
-            {stats.total > 0 ? (
-              <div
-                className={`rounded-2xl border p-5 ${borderColor} ${bgCard}`}
-              >
-                <div className="flex items-center gap-6 flex-wrap">
-                  <ResolutionRing rate={stats.resolutionRate} />
-
-                  <div className="flex flex-col gap-3 flex-1 min-w-[140px]">
-                    {/* Active */}
-                    <div
-                      className={`rounded-xl px-4 py-3 border ${
-                        isDark
-                          ? "bg-red-950/30 border-red-900/30"
-                          : "bg-red-50 border-red-200/60"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FaExclamationCircle size={11} className="text-red-400" />
-                          <span
-                            className={`text-[11px] font-semibold uppercase tracking-wide ${
-                              isDark ? "text-red-400/80" : "text-red-500"
-                            }`}
-                          >
-                            Active
-                          </span>
-                        </div>
-                        <span className="text-xl font-bold tabular-nums text-red-400">
-                          {stats.active}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Resolved */}
-                    <div
-                      className={`rounded-xl px-4 py-3 border ${
-                        isDark
-                          ? "bg-green-950/30 border-green-900/30"
-                          : "bg-green-50 border-green-200/60"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FaCheckCircle size={11} className="text-green-400" />
-                          <span
-                            className={`text-[11px] font-semibold uppercase tracking-wide ${
-                              isDark ? "text-green-400/80" : "text-green-600"
-                            }`}
-                          >
-                            Resolved
-                          </span>
-                        </div>
-                        <span className="text-xl font-bold tabular-nums text-green-400">
-                          {stats.resolved}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Total */}
-                    <div
-                      className={`flex items-center justify-between rounded-lg px-4 py-2 ${
-                        isDark ? "bg-neutral-800/60" : "bg-neutral-100"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <FaChartBar size={10} className={textMuted} />
-                        <span className={`text-[11px] font-medium ${textSecondary}`}>
-                          Total
-                        </span>
-                      </div>
-                      <span className={`text-sm font-bold tabular-nums ${textPrimary}`}>
-                        {stats.total}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div
-                className={`rounded-2xl border p-6 text-center ${borderColor} ${bgCard}`}
-              >
-                <p className={`text-sm ${textSecondary}`}>
-                  No reports yet in this area
-                </p>
-                <p className={`mt-0.5 text-xs ${textMuted}`}>
-                  Be the first to report an issue from the map
-                </p>
-              </div>
-            )}
-
-            {/* Category breakdown */}
-            {stats.categoryBreakdown.length > 0 && (
-              <div
-                className={`rounded-2xl border p-5 ${borderColor} ${bgCard}`}
-              >
-                <p
-                  className={`text-[10px] font-semibold uppercase tracking-widest mb-4 ${textMuted}`}
-                >
-                  Top Issues
-                </p>
-                <div className="flex flex-col gap-3">
-                  {stats.categoryBreakdown.slice(0, 6).map((item) => {
-                    const cat = getCategoryById(item.categoryId);
-                    const pct = Math.round((item.count / stats.total) * 100);
-                    return (
-                      <div key={item.categoryId}>
-                        <div className="flex items-center gap-2.5 mb-1.5">
-                          <div
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                            style={{
-                              backgroundColor: cat
-                                ? `${cat.color}18`
-                                : "#262626",
-                            }}
-                          >
-                            {cat && (
-                              <CategoryIcon
-                                iconName={cat.icon}
-                                size={12}
-                                color={cat.color}
-                              />
-                            )}
-                          </div>
-                          <span
-                            className={`flex-1 text-xs font-medium truncate ${
-                              isDark ? "text-neutral-300" : "text-neutral-700"
-                            }`}
-                          >
-                            {cat?.label ?? item.categoryId}
-                          </span>
-                          <span
-                            className={`text-[11px] font-semibold tabular-nums shrink-0 ${textSecondary}`}
-                          >
-                            {item.count}
-                          </span>
-                          <span
-                            className={`text-[10px] tabular-nums shrink-0 ${textMuted}`}
-                          >
-                            {pct}%
-                          </span>
-                        </div>
-                        <div
-                          className={`h-1.5 w-full overflow-hidden rounded-full ${
-                            isDark ? "bg-neutral-800" : "bg-neutral-200"
-                          }`}
-                        >
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{
-                              width: `${pct}%`,
-                              backgroundColor: cat?.color ?? "#555",
-                              boxShadow: cat
-                                ? `0 0 6px ${cat.color}40`
-                                : "none",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Recent reports */}
-            {recentPins.length > 0 && (
-              <div
-                className={`rounded-2xl border p-5 ${borderColor} ${bgCard}`}
-              >
-                <p
-                  className={`text-[10px] font-semibold uppercase tracking-widest mb-4 ${textMuted}`}
-                >
-                  Recent Reports
-                </p>
-                <div className="flex flex-col gap-2">
-                  {recentPins.map((pin) => {
-                    const cat = getCategoryById(pin.categoryId);
-                    return (
-                      <div
-                        key={pin.id}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${
-                          isDark ? "bg-neutral-800/40" : "bg-neutral-50"
-                        }`}
-                      >
-                        <div
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                          style={{
-                            backgroundColor: cat
-                              ? `${cat.color}18`
-                              : "#262626",
-                          }}
-                        >
-                          {cat && (
-                            <CategoryIcon
-                              iconName={cat.icon}
-                              size={13}
-                              color={cat.color}
-                            />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`text-xs font-medium truncate ${textPrimary}`}
-                          >
-                            {cat?.label ?? pin.categoryId}
-                          </p>
-                          <p className={`text-[10px] truncate ${textMuted}`}>
-                            {pin.description || "No description"}
-                          </p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <span
-                            className={`inline-block rounded-full px-2 py-0.5 text-[9px] font-semibold ${
-                              pin.status === "resolved"
-                                ? "bg-green-500/15 text-green-400"
-                                : pin.status === "pending_resolved"
-                                  ? "bg-amber-500/15 text-amber-400"
-                                  : "bg-red-500/15 text-red-400"
-                            }`}
-                          >
-                            {pin.status === "resolved"
-                              ? "Resolved"
-                              : pin.status === "pending_resolved"
-                                ? "Pending"
-                                : "Active"}
-                          </span>
-                          <p className={`mt-0.5 text-[9px] ${textMuted}`}>
-                            {formatTimeAgo(pin.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Report Panel */}
-            {showReport && (
-              <div
-                className={`rounded-2xl border p-5 ${borderColor} ${bgCard}`}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <FaFileAlt
-                      size={12}
-                      className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"}
-                    />
-                    <p
-                      className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
-                    >
-                      AI-Generated Report
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowReport(false)}
-                    className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
-                      isDark
-                        ? "text-neutral-500 hover:bg-neutral-800 hover:text-white"
-                        : "text-neutral-400 hover:bg-neutral-100 hover:text-neutral-800"
-                    }`}
-                  >
-                    <FaTimes size={10} />
-                  </button>
-                </div>
-
-                {reportLoading && (
-                  <div className="flex flex-col items-center py-8 gap-3">
-                    <FaSpinner
-                      size={24}
-                      className={`animate-spin ${isDark ? "text-[#f5c542]" : "text-[#b8860b]"}`}
-                    />
-                    <p className={`text-xs ${textSecondary}`}>
-                      Analyzing {stats.total} reports for {stats.municipality}...
-                    </p>
-                  </div>
-                )}
-
-                {reportError && (
-                  <div
-                    className={`rounded-xl px-4 py-3 ${
-                      isDark
-                        ? "bg-red-950/30 border border-red-900/30"
-                        : "bg-red-50 border border-red-200/60"
-                    }`}
-                  >
-                    <p className="text-xs text-red-400">{reportError}</p>
-                  </div>
-                )}
-
-                {report && !reportLoading && (
-                  <div className="flex flex-col gap-5">
-                    {/* Overall Assessment */}
-                    <div>
-                      <p
-                        className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${textMuted}`}
-                      >
-                        Overall Assessment
-                      </p>
-                      <p
-                        className={`text-xs leading-relaxed whitespace-pre-line ${
-                          isDark ? "text-neutral-300" : "text-neutral-700"
-                        }`}
-                      >
-                        {report.overallAssessment}
-                      </p>
-                    </div>
-
-                    {/* Biggest Problems */}
-                    {report.biggestProblems?.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-3">
-                          <FaExclamationTriangle size={10} className="text-red-400" />
-                          <p
-                            className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
-                          >
-                            Biggest Problems
-                          </p>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          {report.biggestProblems.map((problem, i) => (
-                            <div
-                              key={i}
-                              className={`rounded-xl px-4 py-3 border ${
-                                problem.severity === "critical"
-                                  ? isDark
-                                    ? "bg-red-950/20 border-red-900/30"
-                                    : "bg-red-50 border-red-200/60"
-                                  : problem.severity === "warning"
-                                    ? isDark
-                                      ? "bg-amber-950/20 border-amber-900/30"
-                                      : "bg-amber-50 border-amber-200/60"
-                                    : isDark
-                                      ? "bg-neutral-800/40 border-neutral-700/50"
-                                      : "bg-neutral-50 border-neutral-200"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span
-                                  className={`text-xs font-semibold ${textPrimary}`}
-                                >
-                                  {problem.issue}
-                                </span>
-                                <span
-                                  className={`text-[9px] font-semibold uppercase px-2 py-0.5 rounded-full ${
-                                    problem.severity === "critical"
-                                      ? "bg-red-500/15 text-red-400"
-                                      : problem.severity === "warning"
-                                        ? "bg-amber-500/15 text-amber-400"
-                                        : "bg-blue-500/15 text-blue-400"
-                                  }`}
-                                >
-                                  {problem.severity}
-                                </span>
-                              </div>
-                              <p className={`text-[11px] leading-relaxed ${textSecondary}`}>
-                                {problem.explanation}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Location Hotspots */}
-                    {report.locationHotspots?.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-3">
-                          <FaMapMarkerAlt size={10} className="text-amber-400" />
-                          <p
-                            className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
-                          >
-                            Location Hotspots
-                          </p>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          {report.locationHotspots.map((hotspot, i) => (
-                            <div
-                              key={i}
-                              className={`rounded-xl px-4 py-3 ${
-                                isDark ? "bg-neutral-800/40" : "bg-neutral-50"
-                              }`}
-                            >
-                              <p
-                                className={`text-xs font-semibold mb-0.5 ${textPrimary}`}
-                              >
-                                {hotspot.area}
-                              </p>
-                              <p className={`text-[11px] mb-1 ${textSecondary}`}>
-                                {hotspot.concern}
-                              </p>
-                              <p
-                                className={`text-[11px] italic ${
-                                  isDark ? "text-[#f5c542]/70" : "text-[#b8860b]/70"
-                                }`}
-                              >
-                                {hotspot.recommendation}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Congestion Analysis */}
-                    {report.congestionAnalysis && (
-                      <div>
-                        <p
-                          className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${textMuted}`}
-                        >
-                          Congestion & Pattern Analysis
-                        </p>
-                        <p
-                          className={`text-xs leading-relaxed ${
-                            isDark ? "text-neutral-300" : "text-neutral-700"
-                          }`}
-                        >
-                          {report.congestionAnalysis}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Resolution Performance */}
-                    {report.resolutionPerformance && (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <FaCheckCircle size={10} className="text-green-400" />
-                          <p
-                            className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
-                          >
-                            Resolution Performance
-                          </p>
-                        </div>
-                        <p
-                          className={`text-xs leading-relaxed ${
-                            isDark ? "text-neutral-300" : "text-neutral-700"
-                          }`}
-                        >
-                          {report.resolutionPerformance}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Recommendations */}
-                    {report.recommendations?.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-1.5 mb-3">
-                          <FaLightbulb size={10} className={isDark ? "text-[#f5c542]" : "text-[#b8860b]"} />
-                          <p
-                            className={`text-[10px] font-semibold uppercase tracking-widest ${textMuted}`}
-                          >
-                            Recommendations
-                          </p>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          {report.recommendations.map((rec, i) => (
-                            <div
-                              key={i}
-                              className={`flex gap-3 rounded-xl px-4 py-3 ${
-                                isDark ? "bg-neutral-800/40" : "bg-neutral-50"
-                              }`}
-                            >
-                              <span
-                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                                  isDark
-                                    ? "bg-[#f5c542]/15 text-[#f5c542]"
-                                    : "bg-[#b8860b]/15 text-[#b8860b]"
-                                }`}
-                              >
-                                {rec.priority}
-                              </span>
-                              <div>
-                                <p
-                                  className={`text-xs font-semibold ${textPrimary}`}
-                                >
-                                  {rec.action}
-                                </p>
-                                <p className={`text-[11px] mt-0.5 ${textSecondary}`}>
-                                  {rec.rationale}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Last activity */}
-            {stats.mostRecentReport && (
-              <div className={`flex items-center gap-1.5 ${textMuted}`}>
-                <FaClock size={10} />
-                <span className="text-[11px]">
-                  Last report {formatTimeAgo(stats.mostRecentReport)}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
       </main>
     </div>
   );
