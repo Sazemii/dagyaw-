@@ -24,6 +24,7 @@ export default function ReportForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [description, setDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleCapture = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -40,11 +41,12 @@ export default function ReportForm({
   );
 
   const handleSubmit = useCallback(() => {
-    if (!photo || !description.trim()) return;
+    if (!photo || !description.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     onSubmit(description.trim(), photo);
-  }, [photo, description, onSubmit]);
+  }, [photo, description, onSubmit, isSubmitting]);
 
-  const canSubmit = !!photo && description.trim().length > 0;
+  const canSubmit = !!photo && description.trim().length > 0 && !isSubmitting;
 
   return (
     <div className="fixed inset-0 z-[1100] flex items-end justify-center">

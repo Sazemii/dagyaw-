@@ -7,10 +7,13 @@ import { supabase } from "../../lib/supabase";
 import {
   getCityDetailedStats,
   fetchPinsByMunicipality,
+  resolvePin,
   type CityDetailedStats,
 } from "../../lib/pins";
 import type { Pin } from "../../components/MapView";
 import { getCategoryById } from "../../components/categories";
+import CategoryIcon from "../../components/CategoryIcon";
+import PinDetailModal from "../../components/PinDetailModal";
 import {
   FaSearch,
   FaBell,
@@ -19,6 +22,8 @@ import {
 } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import type { MunicipalityReport } from "../../lib/insights/types";
+import Map, { Marker, NavigationControl, Source, Layer, type MapRef } from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 interface Place {
   name: string;
@@ -178,6 +183,185 @@ function CategoryBar({
   );
 }
 
+const CARTO_DARK_STYLE =
+  "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+
+/* ── Dashboard Map ── */
+function DashboardMap({
+  pins,
+  center,
+  onPinClick,
+}: {
+  pins: Pin[];
+  center: { lat: number; lng: number } | null;
+  onPinClick?: (pin: Pin) => void;
+}) {
+  const mapRef = useRef<MapRef>(null);
+  const boundaryFetched = useRef<string | null>(null);
+  const [boundaryGeoJSON, setBoundaryGeoJSON] = useState<GeoJSON.Feature | null>(null);
+
+  useEffect(() => {
+    if (center && mapRef.current) {
+      mapRef.current.flyTo({
+        center: [center.lng, center.lat],
+        zoom: 13,
+        duration: 1500,
+      });
+    }
+  }, [center]);
+
+  // Fetch municipality boundary
+  useEffect(() => {
+    if (!center) return;
+    const key = `${center.lat},${center.lng}`;
+    if (boundaryFetched.current === key) return;
+    boundaryFetched.current = key;
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${center.lat}&lon=${center.lng}&format=json&polygon_geojson=1&zoom=10`,
+          { headers: { "User-Agent": "Bayanihan-App/1.0" } }
+        );
+        const data = await res.json();
+        if (data?.geojson) {
+          setBoundaryGeoJSON({
+            type: "Feature",
+            properties: {},
+            geometry: data.geojson,
+          });
+        }
+      } catch {
+        // silently fail
+      }
+    })();
+  }, [center]);
+
+  const handleStyleLoad = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const style = map.getStyle();
+    if (!style?.layers) return;
+
+    for (const layer of style.layers) {
+      const id = layer.id.toLowerCase();
+      if (
+        id.includes("road") || id.includes("bridge") ||
+        id.includes("tunnel") || id.includes("highway") ||
+        id.includes("street") || id.includes("path") ||
+        id.includes("link")
+      ) {
+        if (layer.type === "line") {
+          map.setPaintProperty(layer.id, "line-color", "#999999");
+          map.setPaintProperty(layer.id, "line-opacity", 0.45);
+        }
+      }
+      if (id.includes("building") && layer.type === "fill") {
+        map.setPaintProperty(layer.id, "fill-color", "#ffffff");
+        map.setPaintProperty(layer.id, "fill-opacity", 0.04);
+      }
+      if (id.includes("water") && !id.includes("name") && layer.type === "fill") {
+        map.setPaintProperty(layer.id, "fill-color", "#0c1a2e");
+        map.setPaintProperty(layer.id, "fill-opacity", 0.8);
+      }
+      if (
+        (id.includes("label") || id.includes("name") || id.includes("place")) &&
+        layer.type === "symbol"
+      ) {
+        map.setPaintProperty(layer.id, "text-color", "#888888");
+        map.setPaintProperty(layer.id, "text-halo-color", "#000000");
+        map.setPaintProperty(layer.id, "text-halo-width", 1.5);
+      }
+      if (
+        (id.includes("landuse") || id.includes("park") || id.includes("green")) &&
+        layer.type === "fill"
+      ) {
+        map.setPaintProperty(layer.id, "fill-color", "#0a1a0a");
+        map.setPaintProperty(layer.id, "fill-opacity", 0.5);
+      }
+    }
+  }, []);
+
+  return (
+    <Map
+      ref={mapRef}
+      initialViewState={{
+        longitude: center?.lng ?? 121.0437,
+        latitude: center?.lat ?? 14.676,
+        zoom: center ? 13 : 6,
+      }}
+      maxBounds={[114.0, 4.5, 127.0, 21.5]}
+      style={{ width: "100%", height: "100%" }}
+      mapStyle={CARTO_DARK_STYLE}
+      cursor="grab"
+      onLoad={handleStyleLoad}
+      attributionControl={{}}
+    >
+      <NavigationControl position="bottom-right" showCompass={false} />
+
+      {/* Municipality boundary — subtle fill only, no border lines */}
+      {boundaryGeoJSON && (
+        <Source id="dash-boundary" type="geojson" data={boundaryGeoJSON}>
+          <Layer
+            id="dash-boundary-fill"
+            type="fill"
+            paint={{ "fill-color": "#f5c542", "fill-opacity": 0.04 }}
+          />
+        </Source>
+      )}
+
+      {/* Pin markers — same style as main MapView */}
+      {pins.map((pin) => {
+        const category = getCategoryById(pin.categoryId);
+        if (!category) return null;
+        const isResolved = pin.status === "resolved";
+        const isPending = pin.status === "pending_resolved";
+        const strokeColor = isResolved
+          ? "#22c55e"
+          : isPending
+            ? "#f59e0b"
+            : category.color;
+        const circleFill = isResolved
+          ? "#d1fae5"
+          : isPending
+            ? "#1a1500"
+            : "#1a1a1a";
+
+        return (
+          <Marker key={pin.id} longitude={pin.lng} latitude={pin.lat} anchor="bottom">
+            <div
+              className="pin-marker cursor-pointer"
+              style={{ opacity: isResolved ? 0.5 : 1 }}
+              onClick={(e) => { e.stopPropagation(); onPinClick?.(pin); }}
+            >
+              <svg width="40" height="52" viewBox="0 0 40 52" fill="none" className="pin-drop">
+                {isPending && (
+                  <circle
+                    cx="20" cy="19" r="17"
+                    fill="none" stroke="#f59e0b" strokeWidth="2"
+                    className="pin-pending-pulse"
+                  />
+                )}
+                <polygon points="14,34 26,34 20,50" fill={strokeColor} />
+                <circle cx="20" cy="19" r="17" fill={circleFill} stroke={strokeColor} strokeWidth="2.5" />
+                <foreignObject x="8" y="7" width="24" height="24">
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+                    <CategoryIcon
+                      iconName={category.icon}
+                      color={isResolved ? "#22c55e" : isPending ? "#f59e0b" : category.color}
+                      size={16}
+                    />
+                  </div>
+                </foreignObject>
+              </svg>
+            </div>
+          </Marker>
+        );
+      })}
+    </Map>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading: authLoading, isCommunityWatcher } = useAuth();
@@ -190,9 +374,13 @@ export default function DashboardPage() {
 
   // Selected municipality
   const [municipality, setMunicipality] = useState<string | null>(null);
+  const [municipalityCoords, setMunicipalityCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [stats, setStats] = useState<CityDetailedStats | null>(null);
   const [pins, setPins] = useState<Pin[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
+
+  // Pin detail modal
+  const [viewingPin, setViewingPin] = useState<Pin | null>(null);
 
   // Report generation
   const [report, setReport] = useState<MunicipalityReport | null>(null);
@@ -204,6 +392,20 @@ export default function DashboardPage() {
       const saved = user.user_metadata.dashboard_municipality as string;
       setMunicipality(saved);
       setQuery(saved);
+
+      // Restore saved coords or geocode the municipality
+      const savedLat = user.user_metadata.dashboard_municipality_lat as number | undefined;
+      const savedLng = user.user_metadata.dashboard_municipality_lng as number | undefined;
+      if (savedLat && savedLng) {
+        setMunicipalityCoords({ lat: savedLat, lng: savedLng });
+      } else {
+        // Geocode from name
+        searchPlaces(saved).then((results) => {
+          if (results.length > 0) {
+            setMunicipalityCoords({ lat: results[0].lat, lng: results[0].lng });
+          }
+        });
+      }
     }
   }, [user]);
 
@@ -278,14 +480,37 @@ export default function DashboardPage() {
     async (place: Place) => {
       setQuery(place.name);
       setMunicipality(place.name);
+      setMunicipalityCoords({ lat: place.lat, lng: place.lng });
       setSuggestions([]);
 
       await supabase.auth.updateUser({
-        data: { dashboard_municipality: place.name },
+        data: {
+          dashboard_municipality: place.name,
+          dashboard_municipality_lat: place.lat,
+          dashboard_municipality_lng: place.lng,
+        },
       });
     },
     []
   );
+
+  const handleResolvePin = useCallback(
+    async (pinId: string, comment: string, proofPhotoDataUrl: string) => {
+      try {
+        const updated = await resolvePin(pinId, comment, proofPhotoDataUrl);
+        setPins((prev) => prev.map((p) => (p.id === pinId ? updated : p)));
+        setViewingPin(null);
+      } catch (err) {
+        console.error("Failed to resolve pin:", err);
+      }
+    },
+    []
+  );
+
+  const handlePinUpdate = useCallback((updated: Pin) => {
+    setPins((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setViewingPin(updated);
+  }, []);
 
   // Derived data
   const activeCount = stats?.active ?? 124;
@@ -313,74 +538,38 @@ export default function DashboardPage() {
     ];
   }, [stats]);
 
-  // AI insights from report
-  const insights = useMemo(() => {
-    if (report) {
-      const items: { text: React.ReactNode; bordered: boolean }[] = [];
-      if (report.biggestProblems?.[0]) {
-        items.push({
-          text: (
-            <span>
-              {report.biggestProblems[0].explanation.slice(0, 120)}
-              {report.biggestProblems[0].explanation.length > 120 ? "..." : ""}
-            </span>
-          ),
-          bordered: true,
-        });
-      }
-      if (report.overallAssessment) {
-        items.push({
-          text: (
-            <span>{report.overallAssessment.slice(0, 120)}{report.overallAssessment.length > 120 ? "..." : ""}</span>
-          ),
-          bordered: true,
-        });
-      }
-      if (report.congestionAnalysis) {
-        items.push({
-          text: (
-            <span className="text-[#a6acb3]">
-              {report.congestionAnalysis.slice(0, 120)}{report.congestionAnalysis.length > 120 ? "..." : ""}
-            </span>
-          ),
-          bordered: false,
-        });
-      }
-      return items;
-    }
-    // Default placeholder insights
-    return [
-      {
-        text: (
-          <span>
-            Current flood trajectory indicates high risk for{" "}
-            <span className="font-bold">District 3</span> residential areas.
-            Immediate drainage clearing recommended.
-          </span>
-        ),
-        bordered: true,
-      },
-      {
-        text: (
-          <span>
-            Report volume has increased by{" "}
-            <span className="font-bold text-[#ee7d77]">12%</span> in the last 4
-            hours, primarily focused on road infrastructure issues.
-          </span>
-        ),
-        bordered: true,
-      },
-      {
-        text: (
-          <span className="text-[#a6acb3]">
-            Pattern matching suggests potential illegal dumping correlation with
-            construction activity near Commonwealth Avenue.
-          </span>
-        ),
-        bordered: false,
-      },
-    ];
-  }, [report]);
+  // placeholder insights when no report is loaded yet
+  const placeholderInsights = [
+    {
+      text: (
+        <span>
+          Current flood trajectory indicates high risk for{" "}
+          <span className="font-bold">District 3</span> residential areas.
+          Immediate drainage clearing recommended.
+        </span>
+      ),
+      bordered: true,
+    },
+    {
+      text: (
+        <span>
+          Report volume has increased by{" "}
+          <span className="font-bold text-[#ee7d77]">12%</span> in the last 4
+          hours, primarily focused on road infrastructure issues.
+        </span>
+      ),
+      bordered: true,
+    },
+    {
+      text: (
+        <span className="text-[#a6acb3]">
+          Pattern matching suggests potential illegal dumping correlation with
+          construction activity near Commonwealth Avenue.
+        </span>
+      ),
+      bordered: false,
+    },
+  ];
 
   // Most recent pin for the "Live Ops Feed"
   const latestPin = useMemo(() => {
@@ -484,7 +673,7 @@ export default function DashboardPage() {
       <main className="flex-1 min-h-0 overflow-hidden p-8">
         <div className="h-full grid grid-cols-12 gap-6 grid-rows-[auto_1fr_minmax(0,1fr)_auto]">
           {/* Row 1: Stat Cards */}
-          <div className="col-span-12 grid grid-cols-4 gap-4">
+          <div className="col-span-12 grid grid-cols-3 gap-4">
             <StatCard
               label="Active"
               value={stats ? stats.active : 124}
@@ -503,28 +692,17 @@ export default function DashboardPage() {
               subtitle="Total this month"
               color="#b0c6ff"
             />
-            <StatCard
-              label="Requests"
-              value={18}
-              subtitle="Need approval"
-              color="rgba(253,212,0,0.4)"
-            />
           </div>
 
           {/* Row 2: Map Section */}
           <div className="col-span-12 bg-[#141414] border border-[#2a2d30] rounded overflow-hidden relative">
-            {/* Map background */}
+            {/* Interactive Map */}
             <div className="absolute inset-0">
-              <img
-                src="/map-bg.png"
-                alt=""
-                className="w-full h-full object-cover opacity-30 saturate-0"
-              />
+              <DashboardMap pins={pins} center={municipalityCoords} onPinClick={setViewingPin} />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
 
             {/* Live Ops Feed overlay */}
-            <div className="absolute top-6 left-6 backdrop-blur-xl bg-black/60 border border-[#2a2d30] rounded p-4">
+            <div className="absolute top-6 left-6 z-10 backdrop-blur-xl bg-black/60 border border-[#2a2d30] rounded p-4">
               <div className="flex items-center gap-2 mb-2">
                 <FaCircle size={8} className="text-[#ee7d77] animate-pulse" />
                 <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#ee7d77]">
@@ -548,6 +726,18 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
+
+            {/* Municipality label */}
+            {municipality && (
+              <div className="absolute top-6 right-6 z-10 backdrop-blur-xl bg-black/60 border border-[#2a2d30] rounded px-4 py-2">
+                <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#fdd400]">
+                  {municipality}
+                </span>
+                <span className="text-[10px] text-[#a6acb3] ml-2">
+                  {totalPins} reports
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Row 3: Charts + AI Insights */}
@@ -584,27 +774,158 @@ export default function DashboardPage() {
             </div>
 
             {/* AI Insights */}
-            <div className="col-span-4 bg-[#141414] border border-[#2a2d30] rounded p-6 flex flex-col gap-6 min-h-0">
+            <div className="col-span-4 bg-[#141414] border border-[#2a2d30] rounded p-6 flex flex-col gap-4 min-h-0">
               <div className="flex items-center gap-2 shrink-0">
                 <HiSparkles size={13} className="text-[#fdd400]" />
                 <span className="text-[12px] font-black uppercase tracking-[1.2px] text-[#fdd400]">
                   AI Insights
                 </span>
               </div>
-              <div className="flex flex-col gap-0 flex-1 justify-start overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
                 {reportLoading ? (
-                  <div className="flex items-center justify-center flex-1">
+                  <div className="flex flex-col items-center justify-center h-full gap-2">
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#fdd400] border-t-transparent" />
+                    <span className="text-[10px] text-[#a6acb3]">Analyzing reports...</span>
+                  </div>
+                ) : report ? (
+                  <div className="flex flex-col gap-4">
+                    {/* Overall Assessment */}
+                    <div className="border-l-2 border-[#fdd400]/40 pl-3">
+                      <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#a6acb3] block mb-1">
+                        Assessment
+                      </span>
+                      <p className="text-[11px] leading-[17px] text-[#e0e6ed] whitespace-pre-line">
+                        {report.overallAssessment}
+                      </p>
+                    </div>
+
+                    {/* Biggest Problems */}
+                    {report.biggestProblems?.length > 0 && (
+                      <div>
+                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#ee7d77] block mb-2">
+                          Biggest Problems
+                        </span>
+                        <div className="flex flex-col gap-2">
+                          {report.biggestProblems.map((problem, i) => (
+                            <div
+                              key={i}
+                              className={`pl-3 py-2 rounded-r border-l-2 ${
+                                problem.severity === "critical"
+                                  ? "border-[#ee7d77] bg-[#ee7d77]/5"
+                                  : problem.severity === "warning"
+                                    ? "border-[#fdd400] bg-[#fdd400]/5"
+                                    : "border-[#b0c6ff] bg-[#b0c6ff]/5"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-[10px] font-bold text-[#e0e6ed]">
+                                  {problem.issue}
+                                </span>
+                                <span
+                                  className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                    problem.severity === "critical"
+                                      ? "bg-[#ee7d77]/15 text-[#ee7d77]"
+                                      : problem.severity === "warning"
+                                        ? "bg-[#fdd400]/15 text-[#fdd400]"
+                                        : "bg-[#b0c6ff]/15 text-[#b0c6ff]"
+                                  }`}
+                                >
+                                  {problem.severity}
+                                </span>
+                              </div>
+                              <p className="text-[10px] leading-[15px] text-[#a6acb3]">
+                                {problem.explanation}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Location Hotspots */}
+                    {report.locationHotspots?.length > 0 && (
+                      <div>
+                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
+                          Location Hotspots
+                        </span>
+                        <div className="flex flex-col gap-2">
+                          {report.locationHotspots.map((hotspot, i) => (
+                            <div key={i} className="pl-3 border-l-2 border-[#fdd400]/30">
+                              <span className="text-[10px] font-bold text-[#e0e6ed] block">
+                                {hotspot.area}
+                              </span>
+                              <p className="text-[10px] leading-[15px] text-[#a6acb3]">
+                                {hotspot.concern}
+                              </p>
+                              <p className="text-[10px] leading-[15px] text-[#fdd400]/60 italic mt-0.5">
+                                {hotspot.recommendation}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Congestion Analysis */}
+                    {report.congestionAnalysis && (
+                      <div className="border-l-2 border-[#a6acb3]/30 pl-3">
+                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#a6acb3] block mb-1">
+                          Congestion & Patterns
+                        </span>
+                        <p className="text-[11px] leading-[17px] text-[#e0e6ed]">
+                          {report.congestionAnalysis}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Resolution Performance */}
+                    {report.resolutionPerformance && (
+                      <div className="border-l-2 border-[#22c55e]/40 pl-3">
+                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#22c55e] block mb-1">
+                          Resolution Performance
+                        </span>
+                        <p className="text-[11px] leading-[17px] text-[#e0e6ed]">
+                          {report.resolutionPerformance}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Recommendations */}
+                    {report.recommendations?.length > 0 && (
+                      <div>
+                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
+                          Recommendations
+                        </span>
+                        <div className="flex flex-col gap-1.5">
+                          {report.recommendations.map((rec, i) => (
+                            <div key={i} className="flex gap-2 pl-1">
+                              <span className="shrink-0 flex items-center justify-center h-4 w-4 rounded-full bg-[#fdd400]/10 text-[8px] font-bold text-[#fdd400] mt-0.5">
+                                {rec.priority}
+                              </span>
+                              <div>
+                                <span className="text-[10px] font-bold text-[#e0e6ed] block">
+                                  {rec.action}
+                                </span>
+                                <p className="text-[10px] leading-[14px] text-[#a6acb3]">
+                                  {rec.rationale}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  insights.map((insight, i) => (
+                  /* Placeholder when no report */
+                  placeholderInsights.map((insight, i) => (
                     <div
                       key={i}
                       className={`pl-3 py-2 ${
                         insight.bordered
                           ? "border-l-2 border-[#fdd400]/40"
                           : "pl-3"
-                      } ${i < insights.length - 1 ? "mb-3" : ""}`}
+                      } ${i < placeholderInsights.length - 1 ? "mb-3" : ""}`}
                     >
                       <p className="text-[11px] leading-[18px] text-[#e0e6ed]">
                         {insight.text}
@@ -631,6 +952,16 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Pin Detail Modal — same as main app */}
+      {viewingPin && (
+        <PinDetailModal
+          pin={viewingPin}
+          onClose={() => setViewingPin(null)}
+          onResolve={handleResolvePin}
+          onPinUpdate={handlePinUpdate}
+        />
+      )}
     </div>
   );
 }

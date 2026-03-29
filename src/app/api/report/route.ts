@@ -81,21 +81,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const locationClusters = [...gridMap.values()]
+    const topGridClusters = [...gridMap.values()]
       .filter((g) => g.count >= 2)
       .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map((g) => {
+      .slice(0, 5);
+
+    // Reverse-geocode cluster centers to street/area names
+    const locationClusters = await Promise.all(
+      topGridClusters.map(async (g) => {
         const topCats = [...g.categories.entries()]
           .sort((a, b) => b[1] - a[1])
           .slice(0, 3)
           .map(([catId]) => getCategoryById(catId)?.label ?? catId);
+
+        let areaName = `Near ${g.lat.toFixed(4)}, ${g.lng.toFixed(4)}`;
+        try {
+          const geoRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${g.lat}&lon=${g.lng}&format=json&zoom=16&addressdetails=1`,
+            { headers: { "User-Agent": "Bayanihan-App/1.0" } }
+          );
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const addr = geoData.address || {};
+            const street = addr.road || addr.pedestrian || addr.footway || addr.street || "";
+            const area = addr.suburb || addr.neighbourhood || addr.village || addr.quarter || "";
+            const barangay = addr.city_district || "";
+            const parts = [street, barangay, area].filter(Boolean);
+            if (parts.length > 0) {
+              areaName = `Near ${parts.join(", ")}`;
+            }
+          }
+        } catch {
+          // keep coordinate fallback
+        }
+
         return {
-          area: `Near ${g.lat.toFixed(4)}, ${g.lng.toFixed(4)}`,
+          area: areaName,
           count: g.count,
           topCategories: topCats,
         };
-      });
+      })
+    );
 
     // Recent descriptions for context
     const recentDescriptions = pins.slice(0, 20).map((p) => ({
