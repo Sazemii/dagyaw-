@@ -19,6 +19,7 @@ import {
   FaBell,
   FaCog,
   FaCircle,
+  FaLanguage,
 } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import type { MunicipalityReport } from "../../lib/insights/types";
@@ -385,6 +386,61 @@ export default function DashboardPage() {
   // Report generation
   const [report, setReport] = useState<MunicipalityReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [translatedReport, setTranslatedReport] = useState<MunicipalityReport | null>(null);
+  const [translatingReport, setTranslatingReport] = useState(false);
+
+  const handleTranslateReport = async () => {
+    if (translatedReport) {
+      setTranslatedReport(null);
+      return;
+    }
+    if (!report) return;
+    setTranslatingReport(true);
+    try {
+      const textToTranslate = JSON.stringify({
+        overallAssessment: report.overallAssessment,
+        congestionAnalysis: report.congestionAnalysis,
+        resolutionPerformance: report.resolutionPerformance,
+        biggestProblems: report.biggestProblems?.map((p) => ({ issue: p.issue, explanation: p.explanation })),
+        locationHotspots: report.locationHotspots?.map((h) => ({ area: h.area, concern: h.concern, recommendation: h.recommendation })),
+        recommendations: report.recommendations?.map((r) => ({ action: r.action, rationale: r.rationale })),
+      });
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: textToTranslate }),
+      });
+      const data = await res.json();
+      if (data.translated) {
+        const parsed = JSON.parse(data.translated);
+        setTranslatedReport({
+          overallAssessment: parsed.overallAssessment ?? report.overallAssessment,
+          congestionAnalysis: parsed.congestionAnalysis ?? report.congestionAnalysis,
+          resolutionPerformance: parsed.resolutionPerformance ?? report.resolutionPerformance,
+          biggestProblems: report.biggestProblems?.map((p, i) => ({
+            ...p,
+            issue: parsed.biggestProblems?.[i]?.issue ?? p.issue,
+            explanation: parsed.biggestProblems?.[i]?.explanation ?? p.explanation,
+          })),
+          locationHotspots: report.locationHotspots?.map((h, i) => ({
+            ...h,
+            area: parsed.locationHotspots?.[i]?.area ?? h.area,
+            concern: parsed.locationHotspots?.[i]?.concern ?? h.concern,
+            recommendation: parsed.locationHotspots?.[i]?.recommendation ?? h.recommendation,
+          })),
+          recommendations: report.recommendations?.map((r, i) => ({
+            ...r,
+            action: parsed.recommendations?.[i]?.action ?? r.action,
+            rationale: parsed.recommendations?.[i]?.rationale ?? r.rationale,
+          })),
+        });
+      }
+    } catch {
+      // keep original on failure
+    } finally {
+      setTranslatingReport(false);
+    }
+  };
 
   // Load saved municipality from user metadata
   useEffect(() => {
@@ -425,6 +481,7 @@ export default function DashboardPage() {
         if (statsData.total > 0) {
           setReportLoading(true);
           setReport(null);
+          setTranslatedReport(null);
 
           fetch("/api/report", {
             method: "POST",
@@ -601,6 +658,8 @@ export default function DashboardPage() {
 
   if (!user || !isCommunityWatcher) return null;
 
+  const displayReport = translatedReport ?? report;
+
   return (
     <div className="h-screen bg-black flex flex-col overflow-hidden">
       {/* ── Header ── */}
@@ -775,11 +834,27 @@ export default function DashboardPage() {
 
             {/* AI Insights */}
             <div className="col-span-4 bg-[#141414] border border-[#2a2d30] rounded p-6 flex flex-col gap-4 min-h-0">
-              <div className="flex items-center gap-2 shrink-0">
-                <HiSparkles size={13} className="text-[#fdd400]" />
-                <span className="text-[12px] font-black uppercase tracking-[1.2px] text-[#fdd400]">
-                  AI Insights
-                </span>
+              <div className="flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <HiSparkles size={13} className="text-[#fdd400]" />
+                  <span className="text-[12px] font-black uppercase tracking-[1.2px] text-[#fdd400]">
+                    AI Insights
+                  </span>
+                </div>
+                {report && !reportLoading && (
+                  <button
+                    onClick={handleTranslateReport}
+                    disabled={translatingReport}
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                      translatedReport
+                        ? "bg-[#fdd400]/20 text-[#fdd400]"
+                        : "bg-white/5 text-[#a6acb3] hover:bg-white/10 hover:text-[#e0e6ed]"
+                    } ${translatingReport ? "opacity-60 cursor-wait" : ""}`}
+                  >
+                    <FaLanguage size={12} />
+                    {translatingReport ? "Translating..." : translatedReport ? "English" : "Filipino"}
+                  </button>
+                )}
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
                 {reportLoading ? (
@@ -795,18 +870,18 @@ export default function DashboardPage() {
                         Assessment
                       </span>
                       <p className="text-[11px] leading-[17px] text-[#e0e6ed] whitespace-pre-line">
-                        {report.overallAssessment}
+                        {displayReport?.overallAssessment}
                       </p>
                     </div>
 
                     {/* Biggest Problems */}
-                    {report.biggestProblems?.length > 0 && (
+                    {displayReport?.biggestProblems?.length > 0 && (
                       <div>
                         <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#ee7d77] block mb-2">
                           Biggest Problems
                         </span>
                         <div className="flex flex-col gap-2">
-                          {report.biggestProblems.map((problem, i) => (
+                          {displayReport.biggestProblems.map((problem, i) => (
                             <div
                               key={i}
                               className={`pl-3 py-2 rounded-r border-l-2 ${
@@ -843,13 +918,13 @@ export default function DashboardPage() {
                     )}
 
                     {/* Location Hotspots */}
-                    {report.locationHotspots?.length > 0 && (
+                    {displayReport?.locationHotspots?.length > 0 && (
                       <div>
                         <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
                           Location Hotspots
                         </span>
                         <div className="flex flex-col gap-2">
-                          {report.locationHotspots.map((hotspot, i) => (
+                          {displayReport.locationHotspots.map((hotspot, i) => (
                             <div key={i} className="pl-3 border-l-2 border-[#fdd400]/30">
                               <span className="text-[10px] font-bold text-[#e0e6ed] block">
                                 {hotspot.area}
@@ -867,37 +942,37 @@ export default function DashboardPage() {
                     )}
 
                     {/* Congestion Analysis */}
-                    {report.congestionAnalysis && (
+                    {displayReport?.congestionAnalysis && (
                       <div className="border-l-2 border-[#a6acb3]/30 pl-3">
                         <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#a6acb3] block mb-1">
                           Congestion & Patterns
                         </span>
                         <p className="text-[11px] leading-[17px] text-[#e0e6ed]">
-                          {report.congestionAnalysis}
+                          {displayReport.congestionAnalysis}
                         </p>
                       </div>
                     )}
 
                     {/* Resolution Performance */}
-                    {report.resolutionPerformance && (
+                    {displayReport?.resolutionPerformance && (
                       <div className="border-l-2 border-[#22c55e]/40 pl-3">
                         <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#22c55e] block mb-1">
                           Resolution Performance
                         </span>
                         <p className="text-[11px] leading-[17px] text-[#e0e6ed]">
-                          {report.resolutionPerformance}
+                          {displayReport.resolutionPerformance}
                         </p>
                       </div>
                     )}
 
                     {/* Recommendations */}
-                    {report.recommendations?.length > 0 && (
+                    {displayReport?.recommendations?.length > 0 && (
                       <div>
                         <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
                           Recommendations
                         </span>
                         <div className="flex flex-col gap-1.5">
-                          {report.recommendations.map((rec, i) => (
+                          {displayReport.recommendations.map((rec, i) => (
                             <div key={i} className="flex gap-2 pl-1">
                               <span className="shrink-0 flex items-center justify-center h-4 w-4 rounded-full bg-[#fdd400]/10 text-[8px] font-bold text-[#fdd400] mt-0.5">
                                 {rec.priority}
