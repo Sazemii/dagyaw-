@@ -41,7 +41,6 @@ export default function Home() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [locateTrigger, setLocateTrigger] = useState(0);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
-  const [showSearch, setShowSearch] = useState(false);
   const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number } | null>(null);
   const [cityStatsName, setCityStatsName] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
@@ -224,7 +223,6 @@ export default function Home() {
   const handleSelectMunicipality = useCallback(
     (name: string, lat: number, lng: number) => {
       setFlyTarget({ lat, lng });
-      setShowSearch(false);
       setCityStatsName(name);
     },
     []
@@ -323,9 +321,6 @@ export default function Home() {
         {/* Navbar */}
         <Navbar
           onToggleTheme={() => setTheme(isDark ? "light" : "dark")}
-          showSearch={showSearch}
-          onToggleSearch={() => setShowSearch((v) => !v)}
-          onCloseSearch={() => setShowSearch(false)}
           onOpenAuth={() => setShowAuthModal(true)}
           onNavigateDashboard={() => router.push("/dashboard")}
           showUserMenu={showUserMenu}

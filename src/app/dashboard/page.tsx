@@ -875,7 +875,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Biggest Problems */}
-                    {(displayReport?.biggestProblems?.length ?? 0) > 0 && (
+                    {displayReport && displayReport.biggestProblems.length > 0 && (
                       <div>
                         <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#ee7d77] block mb-2">
                           Biggest Problems
@@ -918,7 +918,7 @@ export default function DashboardPage() {
                     )}
 
                     {/* Location Hotspots */}
-                    {(displayReport?.locationHotspots?.length ?? 0) > 0 && (
+                    {displayReport && displayReport.locationHotspots.length > 0 && (
                       <div>
                         <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
                           Location Hotspots
@@ -966,7 +966,7 @@ export default function DashboardPage() {
                     )}
 
                     {/* Recommendations */}
-                    {(displayReport?.recommendations?.length ?? 0) > 0 && (
+                    {displayReport && displayReport.recommendations.length > 0 && (
                       <div>
                         <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
                           Recommendations

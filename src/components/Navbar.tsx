@@ -73,9 +73,6 @@ async function searchPlaces(query: string): Promise<Place[]> {
 
 interface NavbarProps {
   onToggleTheme: () => void;
-  showSearch: boolean;
-  onToggleSearch: () => void;
-  onCloseSearch: () => void;
   onOpenAuth: () => void;
   onNavigateDashboard: () => void;
   showUserMenu: boolean;
@@ -86,9 +83,6 @@ interface NavbarProps {
 
 export default function Navbar({
   onToggleTheme,
-  showSearch,
-  onToggleSearch,
-  onCloseSearch,
   onOpenAuth,
   onNavigateDashboard,
   showUserMenu,
@@ -109,19 +103,8 @@ export default function Navbar({
   const [stats, setStats] = useState<MunicipalityStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-
-  // Focus input when search opens
-  useEffect(() => {
-    if (showSearch) {
-      setTimeout(() => searchInputRef.current?.focus(), 50);
-    } else {
-      setQuery("");
-      setSuggestions([]);
-      setSelected(null);
-      setStats(null);
-    }
-  }, [showSearch]);
 
   // Close user menu on outside click
   useEffect(() => {
@@ -138,20 +121,20 @@ export default function Navbar({
     return () => document.removeEventListener("mousedown", handler);
   }, [showUserMenu, onCloseUserMenu]);
 
-  // Close search on outside click
+  // Close search dropdown on outside click
   useEffect(() => {
-    if (!showSearch) return;
+    if (!showDropdown) return;
     const handler = (e: MouseEvent) => {
       if (
         searchRef.current &&
         !searchRef.current.contains(e.target as Node)
       ) {
-        onCloseSearch();
+        setShowDropdown(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [showSearch, onCloseSearch]);
+  }, [showDropdown]);
 
   const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
@@ -162,9 +145,11 @@ export default function Navbar({
 
     if (value.trim().length < 2) {
       setSuggestions([]);
+      setShowDropdown(false);
       return;
     }
 
+    setShowDropdown(true);
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
@@ -183,6 +168,7 @@ export default function Navbar({
       setQuery(place.name);
       setSelected(place);
       setSuggestions([]);
+      setShowDropdown(true);
       onSelectMunicipality(place.name, place.lat, place.lng);
 
       setLoading(true);
@@ -204,9 +190,11 @@ export default function Navbar({
       : "text-neutral-500 hover:text-[#b8860b] hover:bg-black/[0.06]"
   }`;
 
+  const showResults = showDropdown && (suggestions.length > 0 || searching || loading || selected || (query.length >= 2 && !searching && suggestions.length === 0));
+
   return (
     <nav
-      className="fixed top-0 right-0 left-0 z-[1000] flex h-12 items-center justify-between px-5 sm:px-6"
+      className="fixed top-0 right-0 left-0 z-[1000] flex h-12 items-center justify-center px-4 sm:px-6"
       style={{
         background: isDark
           ? "rgba(10, 10, 10, 0.55)"
@@ -218,86 +206,80 @@ export default function Navbar({
           : "1px solid rgba(0, 0, 0, 0.08)",
       }}
     >
-      {/* Left: Logo + App name */}
-      <div className="flex items-center gap-2.5">
-        <Image
-          src="/Dagyaw-Logo.svg"
-          alt="Dagyaw"
-          width={30}
-          height={30}
-          className="rounded-lg"
-        />
-        <span
-          className={`text-sm font-semibold tracking-tight ${
-            isDark ? "text-neutral-100" : "text-neutral-800"
-          }`}
-        >
-          Dagyaw
-        </span>
-      </div>
+      <div className="flex w-full max-w-3xl items-center gap-4">
+        {/* Logo + App name */}
+        <div className="flex shrink-0 items-center gap-2.5">
+          <Image
+            src="/Dagyaw-Logo.svg"
+            alt="Dagyaw"
+            width={28}
+            height={28}
+            className="rounded-lg"
+          />
+          <span
+            className={`text-sm font-semibold tracking-tight ${
+              isDark ? "text-neutral-100" : "text-neutral-800"
+            }`}
+          >
+            Dagyaw
+          </span>
+        </div>
 
-      {/* Right: Controls */}
-      <div className="flex items-center gap-1">
-        {/* Search */}
-        <div className="relative" ref={searchRef}>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={onToggleSearch}
-              className={`${iconBtnCls} ${
-                showSearch
-                  ? isDark
-                    ? "text-[#f5c542] bg-white/[0.08] ring-1 ring-[#f5c542]/30 shadow-[0_0_12px_-3px_rgba(245,197,66,0.3)]"
-                    : "text-[#b8860b] bg-black/[0.08] ring-1 ring-[#b8860b]/30 shadow-[0_0_12px_-3px_rgba(184,134,11,0.2)]"
-                  : ""
+        {/* Search bar - always visible */}
+        <div className="relative flex-1 min-w-0" ref={searchRef}>
+          <div className="relative">
+            <FaSearch
+              size={11}
+              className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${
+                isDark ? "text-neutral-500" : "text-neutral-400"
               }`}
-              title="Search municipality"
-            >
-              {searching ? (
-                <FaSpinner size={13} className="animate-spin text-[#f5c542]" />
-              ) : (
-                <FaSearch size={13} className={showSearch ? "animate-pulse-soft" : ""} />
-              )}
-            </button>
-
-            {/* Inline search input */}
-            {showSearch && (
-              <div className="relative search-input-animate">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={query}
-                  onChange={(e) => handleQueryChange(e.target.value)}
-                  placeholder="Search city or municipality..."
-                  className={`w-48 rounded-lg border py-1.5 pl-3 pr-7 text-xs outline-none transition-all sm:w-56 ${
-                    isDark
-                      ? "border-white/10 bg-white/5 text-white placeholder-neutral-500 focus:border-[#f5c542]/40 focus:ring-1 focus:ring-[#f5c542]/20"
-                      : "border-black/10 bg-black/5 text-neutral-900 placeholder-neutral-400 focus:border-[#b8860b]/40 focus:ring-1 focus:ring-[#b8860b]/20"
-                  }`}
-                />
-                {query ? (
-                  <button
-                    onClick={() => {
-                      setQuery("");
-                      setSuggestions([]);
-                      setSelected(null);
-                      setStats(null);
-                      searchInputRef.current?.focus();
-                    }}
-                    className={`absolute right-2 top-1/2 -translate-y-1/2 transition-colors ${
-                      isDark ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-400 hover:text-neutral-600"
-                    }`}
-                  >
-                    <FaTimes size={10} />
-                  </button>
-                ) : null}
-              </div>
+            />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              onFocus={() => {
+                if (query.trim().length >= 2 || selected) setShowDropdown(true);
+              }}
+              placeholder="Search city or municipality..."
+              className={`w-full rounded-lg border py-1.5 pl-8 pr-8 text-xs outline-none transition-all ${
+                isDark
+                  ? "border-white/10 bg-white/5 text-white placeholder-neutral-500 focus:border-[#f5c542]/40 focus:ring-1 focus:ring-[#f5c542]/20"
+                  : "border-black/10 bg-black/5 text-neutral-900 placeholder-neutral-400 focus:border-[#b8860b]/40 focus:ring-1 focus:ring-[#b8860b]/20"
+              }`}
+            />
+            {searching && (
+              <FaSpinner
+                size={11}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 animate-spin ${
+                  isDark ? "text-[#f5c542]" : "text-[#b8860b]"
+                }`}
+              />
+            )}
+            {query && !searching && (
+              <button
+                onClick={() => {
+                  setQuery("");
+                  setSuggestions([]);
+                  setSelected(null);
+                  setStats(null);
+                  setShowDropdown(false);
+                  searchInputRef.current?.focus();
+                }}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                  isDark ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-400 hover:text-neutral-600"
+                }`}
+              >
+                <FaTimes size={10} />
+              </button>
             )}
           </div>
 
           {/* Search results dropdown */}
-          {showSearch && (suggestions.length > 0 || searching || loading || selected || (query.length >= 2 && !searching && suggestions.length === 0)) && (
+          {showResults && (
             <div
-              className={`absolute right-0 top-full mt-2 w-80 overflow-hidden rounded-xl border shadow-2xl dropdown-animate ${
+              className={`absolute left-0 top-full mt-2 w-80 overflow-hidden rounded-xl border shadow-2xl dropdown-animate ${
                 isDark
                   ? "border-white/10 bg-[#141414]/98 backdrop-blur-2xl"
                   : "border-black/10 bg-white/98 backdrop-blur-2xl"
@@ -379,7 +361,7 @@ export default function Navbar({
                       Live Stats
                     </span>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-3">
                     <div
                       className={`group relative overflow-hidden rounded-xl p-3 transition-all ${
@@ -396,7 +378,7 @@ export default function Navbar({
                         <FaExclamationCircle size={40} className="text-red-500" />
                       </div>
                     </div>
-                    
+
                     <div
                       className={`group relative overflow-hidden rounded-xl p-3 transition-all ${
                         isDark
@@ -413,7 +395,7 @@ export default function Navbar({
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4">
                     <div className="flex items-center justify-between mb-1.5">
                       <span className={`text-[10px] font-medium ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
@@ -423,7 +405,7 @@ export default function Navbar({
                         {stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}%
                       </span>
                     </div>
-                    
+
                     {stats.total > 0 ? (
                       <div className={`h-2 w-full overflow-hidden rounded-full ${isDark ? "bg-neutral-800" : "bg-neutral-200 shadow-inner"}`}>
                         <div className="flex h-full transition-all duration-1000 ease-out">
@@ -440,7 +422,7 @@ export default function Navbar({
                         </p>
                       </div>
                     )}
-                    
+
                     <div className="mt-3 flex items-center justify-center gap-1.5">
                       <div className={`h-1 w-1 rounded-full ${isDark ? "bg-neutral-700" : "bg-neutral-300"}`} />
                       <span className={`text-[9px] font-medium ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
@@ -463,94 +445,97 @@ export default function Navbar({
           )}
         </div>
 
-        {/* Theme toggle */}
-        <button
-          onClick={onToggleTheme}
-          className={iconBtnCls}
-          title={isDark ? "Light mode" : "Dark mode"}
-        >
-          {isDark ? <FaSun size={13} /> : <FaMoon size={13} />}
-        </button>
-
-        {/* Dashboard (watchers only) */}
-        {isCommunityWatcher && user && (
+        {/* Controls group */}
+        <div className="flex shrink-0 items-center gap-1">
+          {/* Theme toggle */}
           <button
-            onClick={onNavigateDashboard}
-            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
-              isDark
-                ? "text-[#f5c542]/80 hover:text-[#f5c542] hover:bg-[#f5c542]/10"
-                : "text-[#b8860b]/80 hover:text-[#b8860b] hover:bg-[#b8860b]/10"
-            }`}
-            title="Dashboard"
+            onClick={onToggleTheme}
+            className={iconBtnCls}
+            title={isDark ? "Light mode" : "Dark mode"}
           >
-            <FaTachometerAlt size={13} />
+            {isDark ? <FaSun size={13} /> : <FaMoon size={13} />}
           </button>
-        )}
 
-        {/* Divider */}
-        <div
-          className={`mx-1 h-5 w-px ${isDark ? "bg-white/10" : "bg-black/10"}`}
-        />
-
-        {/* User */}
-        <div className="relative" ref={userMenuRef}>
-          {user ? (
-            <>
-              <button
-                onClick={onToggleUserMenu}
-                className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
-                  isDark
-                    ? "bg-[#f5c542]/15 text-[#f5c542] hover:bg-[#f5c542]/25"
-                    : "bg-[#b8860b]/15 text-[#b8860b] hover:bg-[#b8860b]/25"
-                }`}
-                title={user.email ?? "Account"}
-              >
-                <span className="text-[11px] font-bold uppercase">
-                  {user.email?.[0] ?? "U"}
-                </span>
-              </button>
-              {showUserMenu && (
-                <div
-                  className={`absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border shadow-xl ${
-                    isDark
-                      ? "border-white/10 bg-[#141414]/90 backdrop-blur-xl"
-                      : "border-black/10 bg-white/90 backdrop-blur-xl"
-                  }`}
-                >
-                  <div
-                    className={`truncate px-3 py-2 text-[10px] ${
-                      isDark ? "text-neutral-500" : "text-neutral-400"
-                    }`}
-                  >
-                    {user.email}
-                  </div>
-                  <div
-                    className={`border-t ${
-                      isDark ? "border-white/5" : "border-black/5"
-                    }`}
-                  />
-                  <button
-                    onClick={() => {
-                      onCloseUserMenu();
-                      signOut();
-                    }}
-                    className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors ${
-                      isDark
-                        ? "text-neutral-300 hover:bg-white/5"
-                        : "text-neutral-700 hover:bg-black/5"
-                    }`}
-                  >
-                    <FaSignOutAlt size={11} className="text-red-400" />
-                    Sign Out
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <button onClick={onOpenAuth} className={iconBtnCls} title="Sign In">
-              <FaUser size={13} />
+          {/* Dashboard */}
+          {isCommunityWatcher && user && (
+            <button
+              onClick={onNavigateDashboard}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+                isDark
+                  ? "text-[#f5c542]/80 hover:text-[#f5c542] hover:bg-[#f5c542]/10"
+                  : "text-[#b8860b]/80 hover:text-[#b8860b] hover:bg-[#b8860b]/10"
+              }`}
+              title="Dashboard"
+            >
+              <FaTachometerAlt size={13} />
             </button>
           )}
+
+          {/* Divider before profile */}
+          <div
+            className={`mx-1.5 h-5 w-px ${isDark ? "bg-white/10" : "bg-black/10"}`}
+          />
+
+          {/* Profile / Account */}
+          <div className="relative" ref={userMenuRef}>
+            {user ? (
+              <>
+                <button
+                  onClick={onToggleUserMenu}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
+                    isDark
+                      ? "bg-[#f5c542]/15 text-[#f5c542] hover:bg-[#f5c542]/25"
+                      : "bg-[#b8860b]/15 text-[#b8860b] hover:bg-[#b8860b]/25"
+                  }`}
+                  title={user.email ?? "Account"}
+                >
+                  <span className="text-[11px] font-bold uppercase">
+                    {user.email?.[0] ?? "U"}
+                  </span>
+                </button>
+                {showUserMenu && (
+                  <div
+                    className={`absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border shadow-xl ${
+                      isDark
+                        ? "border-white/10 bg-[#141414]/90 backdrop-blur-xl"
+                        : "border-black/10 bg-white/90 backdrop-blur-xl"
+                    }`}
+                  >
+                    <div
+                      className={`truncate px-3 py-2 text-[10px] ${
+                        isDark ? "text-neutral-500" : "text-neutral-400"
+                      }`}
+                    >
+                      {user.email}
+                    </div>
+                    <div
+                      className={`border-t ${
+                        isDark ? "border-white/5" : "border-black/5"
+                      }`}
+                    />
+                    <button
+                      onClick={() => {
+                        onCloseUserMenu();
+                        signOut();
+                      }}
+                      className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors ${
+                        isDark
+                          ? "text-neutral-300 hover:bg-white/5"
+                          : "text-neutral-700 hover:bg-black/5"
+                      }`}
+                    >
+                      <FaSignOutAlt size={11} className="text-red-400" />
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <button onClick={onOpenAuth} className={iconBtnCls} title="Sign In">
+                <FaUser size={13} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </nav>
