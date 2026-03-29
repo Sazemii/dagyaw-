@@ -1020,16 +1020,18 @@ export default function DashboardPage() {
               <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#e0e6ed] shrink-0">
                 Category Breakdown
               </span>
-              <div className="flex flex-col gap-3.5 flex-1 min-h-0 overflow-y-auto pr-1 justify-center">
-                {categoryBreakdown.map((cat) => (
-                  <CategoryBar
-                    key={cat.label}
-                    label={cat.label}
-                    value={`${cat.count} Units`}
-                    color={cat.color}
-                    percent={cat.percent}
-                  />
-                ))}
+              <div className="flex flex-col flex-1 min-h-0 overflow-y-auto pr-1">
+                <div className="flex flex-col gap-3.5 my-auto">
+                  {categoryBreakdown.map((cat) => (
+                    <CategoryBar
+                      key={cat.label}
+                      label={cat.label}
+                      value={`${cat.count} Units`}
+                      color={cat.color}
+                      percent={cat.percent}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 
