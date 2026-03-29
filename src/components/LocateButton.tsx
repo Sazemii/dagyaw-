@@ -1,6 +1,5 @@
 "use client";
 
-import { FaLocationArrow } from "react-icons/fa";
 import { useTheme } from "./ThemeContext";
 import type { LocationStatus } from "./UserLocationTracker";
 
@@ -27,7 +26,7 @@ export default function LocateButton({ onClick, status }: LocateButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`fixed bottom-5 left-5 z-[1000] flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md transition-all sm:bottom-6 sm:left-6 ${
+      className={`fixed bottom-[84px] right-5 z-[1000] flex h-14 w-14 items-center justify-center rounded-full border backdrop-blur-md transition-all sm:bottom-[92px] sm:right-6 ${
         isDark
           ? "border-neutral-700 bg-[#0f0f0f]/80 hover:bg-[#1a1a1a]"
           : "border-neutral-300 bg-white/80 hover:bg-white"
@@ -51,8 +50,8 @@ export default function LocateButton({ onClick, status }: LocateButtonProps) {
     >
       {isRequesting ? (
         <svg
-          width="16"
-          height="16"
+          width="20"
+          height="20"
           viewBox="0 0 16 16"
           fill="none"
           className="animate-spin"
@@ -69,7 +68,14 @@ export default function LocateButton({ onClick, status }: LocateButtonProps) {
           />
         </svg>
       ) : (
-        <FaLocationArrow size={15} />
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+          <line x1="12" y1="3" x2="12" y2="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <line x1="12" y1="23" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <line x1="3" y1="12" x2="1" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <line x1="23" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <circle cx="12" cy="12" r="3" fill="currentColor" />
+        </svg>
       )}
 
       {isError && (

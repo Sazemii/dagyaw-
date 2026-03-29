@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import Map, {
   Marker,
-  NavigationControl,
   Source,
   Layer,
   type MapRef,
@@ -53,6 +52,8 @@ interface MapViewProps {
   floodAlerts?: FloodWasteAlert[];
   onFloodAlertClick?: (alert: FloodWasteAlert) => void;
   proneZones?: ProneZone[];
+  onBearingChange?: (bearing: number) => void;
+  resetNorthTrigger?: number;
 }
 
 const CARTO_DARK_STYLE =
@@ -311,6 +312,8 @@ export default function MapView({
   floodAlerts = [],
   onFloodAlertClick,
   proneZones = [],
+  onBearingChange,
+  resetNorthTrigger = 0,
 }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
   const theme = useTheme();
@@ -334,6 +337,12 @@ export default function MapView({
     () => proneZonesToGeoJSON(accidentZones),
     [accidentZones]
   );
+
+  useEffect(() => {
+    if (resetNorthTrigger > 0 && mapRef.current) {
+      mapRef.current.easeTo({ bearing: 0, duration: 500 });
+    }
+  }, [resetNorthTrigger]);
 
   useEffect(() => {
     if (flyTarget && mapRef.current) {
@@ -443,6 +452,13 @@ export default function MapView({
     [isPlacingPin, onMapClick]
   );
 
+  const handleRotate = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (map && onBearingChange) {
+      onBearingChange(map.getBearing());
+    }
+  }, [onBearingChange]);
+
   const handleStyleLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
@@ -540,9 +556,9 @@ export default function MapView({
       onClick={handleClick}
       cursor={isPlacingPin ? "crosshair" : "grab"}
       onLoad={handleStyleLoad}
+      onRotate={handleRotate}
       attributionControl={{}}
     >
-      <NavigationControl position="bottom-right" showCompass={false} />
       <UserLocationTracker locateTrigger={locateTrigger} onLocationStatus={onLocationStatus} />
 
       {/* Flood zone overlay — opacity driven by waste density */}

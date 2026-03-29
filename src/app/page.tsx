@@ -18,6 +18,7 @@ import ReportForm from "../components/ReportForm";
 import PinDetailModal from "../components/PinDetailModal";
 import InsightPanel from "../components/InsightPanel";
 import LocateButton from "../components/LocateButton";
+import MapCompass from "../components/MapCompass";
 import { FaCheckCircle, FaWater, FaRoad, FaExclamationTriangle } from "react-icons/fa";
 import Navbar from "../components/Navbar";
 import CityStats from "../components/CityStats";
@@ -53,6 +54,8 @@ export default function Home() {
   const [generatedFloodAlertIds, setGeneratedFloodAlertIds] = useState<Set<string>>(new Set());
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [mapBearing, setMapBearing] = useState(0);
+  const [resetNorthTrigger, setResetNorthTrigger] = useState(0);
 
   const isDark = theme === "dark";
 
@@ -210,6 +213,14 @@ export default function Home() {
     setLocationStatus(status);
   }, []);
 
+  const handleBearingChange = useCallback((bearing: number) => {
+    setMapBearing(bearing);
+  }, []);
+
+  const handleResetNorth = useCallback(() => {
+    setResetNorthTrigger((n) => n + 1);
+  }, []);
+
   const handleSelectMunicipality = useCallback(
     (name: string, lat: number, lng: number) => {
       setFlyTarget({ lat, lng });
@@ -302,6 +313,8 @@ export default function Home() {
           floodAlerts={floodAlerts}
           onFloodAlertClick={handleFloodAlertClick}
           proneZones={proneZones}
+          onBearingChange={handleBearingChange}
+          resetNorthTrigger={resetNorthTrigger}
         />
 
         {/* Vignette */}
@@ -422,6 +435,9 @@ export default function Home() {
 
         {/* Locate me button */}
         <LocateButton onClick={handleLocate} status={locationStatus} />
+
+        {/* Interactive compass */}
+        <MapCompass bearing={mapBearing} onResetNorth={handleResetNorth} />
 
         <ReportButton
           isActive={mode !== "idle"}
