@@ -195,9 +195,9 @@ export default function Navbar({
       (query.length >= 2 && !searching && suggestions.length === 0));
 
   return (
-    <nav className="fixed top-3.5 left-1/2 z-[1000] -translate-x-1/2">
+    <nav className="fixed top-3.5 left-1/2 z-[1000] w-[calc(100vw-1rem)] max-w-[26rem] -translate-x-1/2 sm:w-auto sm:max-w-none">
       <div
-        className="flex items-center gap-4 rounded-full px-3 py-2.5 sm:gap-4 sm:px-8 sm:py-3"
+        className="flex items-center gap-3 rounded-full px-2.5 py-2.5 sm:gap-4 sm:px-8 sm:py-3"
         style={{
           background: isDark
             ? "linear-gradient(145deg, rgba(22, 22, 22, 0.88), rgba(10, 10, 10, 0.72))"
@@ -231,7 +231,7 @@ export default function Navbar({
         </div>
 
         {/* Search bar - always visible */}
-        <div className="relative min-w-0" ref={searchRef}>
+        <div className="relative min-w-0 flex-1 mr-2 sm:mr-0 sm:flex-none" ref={searchRef}>
           <div className="relative flex items-center">
             <FaSearch
               size={13}
@@ -247,9 +247,9 @@ export default function Navbar({
               onFocus={() => {
                 if (query.trim().length >= 2 || selected) setShowDropdown(true);
               }}
-              placeholder="Search city or municipality"
+              placeholder="Search city"
               style={{ paddingLeft: "2.25rem" }}
-              className={`h-9 w-[32vw] min-w-[8rem] max-w-[11rem] rounded-full border pr-4 text-xs leading-none outline-none transition-all placeholder:text-[11px] sm:h-10 sm:w-72 sm:max-w-none sm:pr-4 sm:placeholder:text-xs ${
+              className={`h-9 w-full min-w-0 rounded-full border pr-4 text-xs leading-none outline-none transition-all placeholder:text-[11px] sm:h-10 sm:w-72 sm:pr-4 sm:placeholder:text-xs ${
                 isDark
                   ? "border-white/10 bg-white/[0.06] text-white placeholder-neutral-500 focus:border-[#f5c542]/40 focus:ring-1 focus:ring-[#f5c542]/20"
                   : "border-black/8 bg-black/[0.04] text-neutral-900 placeholder-neutral-400 focus:border-[#b8860b]/40 focus:ring-1 focus:ring-[#b8860b]/20"
@@ -503,7 +503,7 @@ export default function Navbar({
         </div>
 
         {/* Controls group */}
-        <div className="flex shrink-0 items-center gap-1 pr-0.5 sm:gap-1.5 sm:pr-1.5 ">
+        <div className="flex shrink-0 items-center gap-1 pr-0.5 sm:gap-1.5 sm:pr-1.5">
           {/* Theme toggle */}
           <button
             onClick={onToggleTheme}
