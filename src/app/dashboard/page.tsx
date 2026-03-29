@@ -14,7 +14,7 @@ import type { Pin } from "../../components/MapView";
 import { getCategoryById } from "../../components/categories";
 import CategoryIcon from "../../components/CategoryIcon";
 import PinDetailModal from "../../components/PinDetailModal";
-import { FaSearch, FaBell, FaCog, FaCircle, FaLanguage } from "react-icons/fa";
+import { FaSearch, FaBell, FaCircle, FaLanguage, FaExpand, FaTimes } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import type { MunicipalityReport } from "../../lib/insights/types";
 import Map, {
@@ -91,58 +91,19 @@ function StatCard({
 }) {
   return (
     <div
-      className="bg-[#141414] rounded overflow-hidden pl-[22px] pr-5 py-5 flex flex-col gap-1"
-      style={{ borderLeft: `2px solid ${color}` }}
+      className="bg-[#141414] rounded-lg overflow-hidden pl-5 pr-5 py-4 flex flex-col gap-0.5 border border-[#2a2d30]"
+      style={{ borderLeft: `3px solid ${color}` }}
     >
-      <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#a6acb3]">
+      <span className="text-[10px] font-semibold uppercase tracking-[1px] text-[#a6acb3]">
         {label}
       </span>
-      <span className="text-[30px] font-black leading-9" style={{ color }}>
+      <span
+        className="text-[20px] font-semibold leading-7"
+        style={{ color, fontVariantNumeric: "tabular-nums" }}
+      >
         {value}
       </span>
-      <span className="text-[10px] text-[#a6acb3]/70">{subtitle}</span>
-    </div>
-  );
-}
-
-/* ── Bar Chart ── */
-const CHART_DATA = [
-  { day: "MON", filled: 32, overlay: 96 },
-  { day: "TUE", filled: 48, overlay: 64 },
-  { day: "WED", filled: 22, overlay: 109 },
-  { day: "THU", filled: 58, overlay: 73 },
-  { day: "FRI", filled: 87, overlay: 44 },
-  { day: "SAT", filled: 16, overlay: 32 },
-  { day: "SUN", filled: 8, overlay: 24 },
-];
-
-function BarChart() {
-  const maxH = 130;
-  return (
-    <div className="flex items-end justify-between px-2 h-full">
-      {CHART_DATA.map((bar) => {
-        const totalH = bar.filled + bar.overlay;
-        const scale =
-          maxH / Math.max(...CHART_DATA.map((b) => b.filled + b.overlay));
-        return (
-          <div
-            key={bar.day}
-            className="flex flex-col gap-1 items-center flex-1 justify-end h-full"
-          >
-            <div
-              className="w-full rounded-sm bg-[#fdd400]/20"
-              style={{ height: bar.overlay * scale }}
-            />
-            <div
-              className="w-full rounded-sm bg-[#fdd400]"
-              style={{ height: bar.filled * scale }}
-            />
-            <span className="text-[9px] text-[#a6acb3] text-center pt-2">
-              {bar.day}
-            </span>
-          </div>
-        );
-      })}
+      <span className="text-[10px] text-[#a6acb3]/60">{subtitle}</span>
     </div>
   );
 }
@@ -161,21 +122,21 @@ function CategoryBar({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between min-w-0">
         <span
-          className="text-[10px] font-bold uppercase tracking-[-0.5px]"
+          className="text-[10px] font-semibold uppercase tracking-[-0.3px] truncate"
           style={{ color }}
         >
           {label}
         </span>
-        <span className="text-[10px] text-[#e0e6ed] uppercase tracking-[-0.5px]">
+        <span className="text-[10px] text-[#e0e6ed]/80 shrink-0 ml-2 tabular-nums">
           {value}
         </span>
       </div>
-      <div className="h-1 w-full bg-black rounded-full overflow-hidden">
+      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full"
-          style={{ width: `${percent}%`, backgroundColor: color }}
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${percent}%`, backgroundColor: color, opacity: 0.85 }}
         />
       </div>
     </div>
@@ -433,12 +394,18 @@ export default function DashboardPage() {
   // Pin detail modal
   const [viewingPin, setViewingPin] = useState<Pin | null>(null);
 
+  // Notifications panel
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
   // Report generation
   const [report, setReport] = useState<MunicipalityReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
   const [translatedReport, setTranslatedReport] =
     useState<MunicipalityReport | null>(null);
   const [translatingReport, setTranslatingReport] = useState(false);
+  const [insightsExpanded, setInsightsExpanded] = useState(false);
 
   const handleTranslateReport = async () => {
     if (translatedReport) {
@@ -551,6 +518,7 @@ export default function DashboardPage() {
         if (statsData.total > 0) {
           setReportLoading(true);
           setReport(null);
+          setReportError(null);
           setTranslatedReport(null);
 
           fetch("/api/report", {
@@ -559,11 +527,24 @@ export default function DashboardPage() {
             body: JSON.stringify({ municipality }),
           })
             .then((res) => {
-              if (!res.ok) throw new Error("Report generation failed");
+              if (!res.ok) {
+                return res.json().then((d) => {
+                  throw new Error(d.error || d.details || `API error ${res.status}`);
+                });
+              }
               return res.json();
             })
-            .then((data) => setReport(data.report))
-            .catch(() => {})
+            .then((data) => {
+              if (data.report) {
+                setReport(data.report);
+              } else {
+                setReportError("No report data returned");
+              }
+            })
+            .catch((err) => {
+              console.error("Report generation failed:", err);
+              setReportError(err.message || "Failed to generate report");
+            })
             .finally(() => setReportLoading(false));
         }
       })
@@ -580,6 +561,18 @@ export default function DashboardPage() {
       router.replace("/");
     }
   }, [authLoading, user, isCommunityWatcher, router]);
+
+  // Close notifications on outside click
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [notificationsOpen]);
 
   const handleQueryChange = useCallback((value: string) => {
     setQuery(value);
@@ -635,6 +628,41 @@ export default function DashboardPage() {
     setPins((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
     setViewingPin(updated);
   }, []);
+
+  const handleRetryReport = useCallback(() => {
+    if (!municipality) return;
+    setReportLoading(true);
+    setReport(null);
+    setReportError(null);
+    setTranslatedReport(null);
+
+    fetch("/api/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ municipality }),
+    })
+      .then((res) => {
+        if (!res.ok) {
+          return res.json().then((d) => {
+            throw new Error(d.error || d.details || `API error ${res.status}`);
+          });
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data.report) {
+          setReport(data.report);
+          setReportError(null);
+        } else {
+          setReportError("No report data returned");
+        }
+      })
+      .catch((err) => {
+        console.error("Report retry failed:", err);
+        setReportError(err.message || "Failed to generate report");
+      })
+      .finally(() => setReportLoading(false));
+  }, [municipality]);
 
   // Derived data
   const activeCount = stats?.active ?? 124;
@@ -731,7 +759,7 @@ export default function DashboardPage() {
   return (
     <div className="h-screen bg-black flex flex-col overflow-hidden">
       {/* ── Header ── */}
-      <header className="shrink-0 flex items-center justify-between px-8 py-4 border-b border-[#2a2d30]">
+      <header className="shrink-0 flex items-center justify-between px-8 py-3.5 border-b border-[#1e1e1e]">
         <div className="flex items-center gap-8">
           <span
             className="text-[20px] font-black uppercase tracking-[-1px] text-[#fdd400] cursor-pointer"
@@ -751,11 +779,11 @@ export default function DashboardPage() {
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               placeholder="Search operational grid..."
-              className="w-[256px] bg-black border border-[#2a2d30] rounded text-[12px] text-[#e0e6ed] placeholder-[#6b7280] pl-0 r-4 py-2.5 outline-none focus:border-[#fdd400]/40 transition-colors"
+              className="w-[256px] bg-black border border-[#2a2d30] rounded-lg text-[12px] text-[#e0e6ed] placeholder-[#6b7280] pl-8 pr-4 py-2.5 outline-none focus:border-[#fdd400]/40 transition-colors"
             />
             {/* Search suggestions dropdown */}
             {suggestions.length > 0 && (
-              <div className="absolute top-full mt-1 left-0 w-full bg-[#141414] border border-[#2a2d30] rounded z-50 max-h-48 overflow-y-auto">
+              <div className="absolute top-full mt-1 left-0 w-full bg-[#141414] border border-[#2a2d30] rounded-lg z-50 max-h-48 overflow-y-auto">
                 {suggestions.map((place, i) => (
                   <button
                     key={`${place.name}-${i}`}
@@ -775,16 +803,122 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-4">
-            <button className="text-[#a6acb3] hover:text-[#e0e6ed] transition-colors">
+        <div className="flex items-center gap-5">
+          <div className="relative" ref={notifRef}>
+            <button
+              onClick={() => setNotificationsOpen((v) => !v)}
+              className="relative text-[#a6acb3] hover:text-[#e0e6ed] transition-colors"
+            >
               <FaBell size={16} />
+              {pins.length > 0 && (
+                <span className="absolute -top-1 -right-1.5 flex items-center justify-center h-3.5 w-3.5 rounded-full bg-[#ee7d77] text-[7px] font-bold text-white">
+                  {pins.length > 99 ? "99" : pins.length}
+                </span>
+              )}
             </button>
-            <button className="text-[#a6acb3] hover:text-[#e0e6ed] transition-colors">
-              <FaCog size={16} />
-            </button>
+
+            {/* Notifications Dropdown */}
+            {notificationsOpen && (
+              <div className="absolute top-full right-0 mt-2 w-[380px] max-h-[480px] bg-[#141414] border border-[#2a2d30] rounded-lg shadow-2xl z-50 flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2d30] shrink-0">
+                  <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#e0e6ed]">
+                    Citizen Reports
+                  </span>
+                  <span className="text-[10px] text-[#a6acb3]">
+                    {pins.length} total
+                  </span>
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  {pins.length === 0 ? (
+                    <div className="flex items-center justify-center py-10">
+                      <span className="text-[11px] text-[#a6acb3]/60">
+                        No reports yet
+                      </span>
+                    </div>
+                  ) : (
+                    pins.map((pin) => {
+                      const cat = getCategoryById(pin.categoryId);
+                      const statusColor =
+                        pin.status === "resolved"
+                          ? "#22c55e"
+                          : pin.status === "pending_resolved"
+                            ? "#f59e0b"
+                            : "#ee7d77";
+                      const statusLabel =
+                        pin.status === "resolved"
+                          ? "Resolved"
+                          : pin.status === "pending_resolved"
+                            ? "Pending"
+                            : "Active";
+                      return (
+                        <button
+                          key={pin.id}
+                          onClick={() => {
+                            setViewingPin(pin);
+                            setNotificationsOpen(false);
+                          }}
+                          className="w-full flex gap-3 px-4 py-3 hover:bg-white/4 transition-colors text-left border-b border-[#2a2d30]/50 last:border-0"
+                        >
+                          {/* Photo thumbnail */}
+                          <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-[#1a1a1a] border border-[#2a2d30]">
+                            {pin.photoUrl ? (
+                              <img
+                                src={pin.photoUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                {cat && (
+                                  <CategoryIcon
+                                    iconName={cat.icon}
+                                    color={cat.color}
+                                    size={16}
+                                  />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          {/* Details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span
+                                className="text-[10px] font-semibold uppercase truncate"
+                                style={{ color: cat?.color ?? "#a6acb3" }}
+                              >
+                                {cat?.label ?? pin.categoryId}
+                              </span>
+                              <span
+                                className="shrink-0 text-[8px] font-bold uppercase px-1.5 py-0.5 rounded"
+                                style={{
+                                  color: statusColor,
+                                  backgroundColor: `${statusColor}15`,
+                                }}
+                              >
+                                {statusLabel}
+                              </span>
+                            </div>
+                            <p className="text-[11px] leading-[15px] text-[#e0e6ed]/80 line-clamp-2">
+                              {pin.description || "No description provided"}
+                            </p>
+                            <span className="text-[9px] text-[#a6acb3]/50 mt-1 block">
+                              {new Date(pin.createdAt).toLocaleDateString("en-PH", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="w-8 h-8 rounded-xl bg-[#1a1a1a] border border-[#2a2d30] overflow-hidden flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] border border-[#2a2d30] overflow-hidden flex items-center justify-center">
             {user.user_metadata?.avatar_url ? (
               <img
                 src={user.user_metadata.avatar_url}
@@ -801,10 +935,10 @@ export default function DashboardPage() {
       </header>
 
       {/* ── Dashboard Content ── */}
-      <main className="flex-1 min-h-0 overflow-hidden p-8">
-        <div className="h-full grid grid-cols-12 gap-6 grid-rows-[auto_1fr_minmax(0,1fr)_auto]">
+      <main className="flex-1 min-h-0 overflow-hidden p-6">
+        <div className="h-full grid grid-cols-12 gap-5 grid-rows-[auto_1.3fr_minmax(0,1fr)_auto]">
           {/* Row 1: Stat Cards */}
-          <div className="col-span-12 grid grid-cols-3 gap-4">
+          <div className="col-span-12 grid grid-cols-3 gap-3">
             <StatCard
               label="Active"
               value={stats ? stats.active : 124}
@@ -830,7 +964,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Row 2: Map Section */}
-          <div className="col-span-12 bg-[#141414] border border-[#2a2d30] rounded overflow-hidden relative">
+          <div className="col-span-12 bg-[#141414] border border-[#2a2d30] rounded-lg overflow-hidden relative">
             {/* Interactive Map */}
             <div className="absolute inset-0">
               <DashboardMap
@@ -841,7 +975,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Live Ops Feed overlay */}
-            <div className="absolute top-6 left-6 z-10 backdrop-blur-xl bg-black/60 border border-[#2a2d30] rounded p-4">
+            <div className="absolute top-5 left-5 z-10 backdrop-blur-xl bg-black/50 border border-white/8 rounded-lg p-3.5">
               <div className="flex items-center gap-2 mb-2">
                 <FaCircle size={8} className="text-[#ee7d77] animate-pulse" />
                 <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#ee7d77]">
@@ -868,7 +1002,7 @@ export default function DashboardPage() {
 
             {/* Municipality label */}
             {municipality && (
-              <div className="absolute top-6 right-6 z-10 backdrop-blur-xl bg-black/60 border border-[#2a2d30] rounded px-4 py-2">
+              <div className="absolute top-5 right-5 z-10 backdrop-blur-xl bg-black/50 border border-white/8 rounded-lg px-3.5 py-2">
                 <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#fdd400]">
                   {municipality}
                 </span>
@@ -879,27 +1013,14 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Row 3: Charts + AI Insights */}
-          <div className="col-span-12 grid grid-cols-12 gap-6 min-h-0">
-            {/* Reports Over Time */}
-            <div className="col-span-4 bg-[#141414] border border-[#2a2d30] rounded p-6 flex flex-col gap-6 min-h-0">
-              <div className="flex items-center justify-between shrink-0">
-                <span className="text-[12px] font-black uppercase tracking-[1.2px] text-[#e0e6ed]">
-                  Reports Over Time
-                </span>
-                <span className="text-[10px] text-[#a6acb3]">LAST 7 DAYS</span>
-              </div>
-              <div className="flex-1 min-h-0">
-                <BarChart />
-              </div>
-            </div>
-
+          {/* Row 3: Category Breakdown + AI Insights */}
+          <div className="col-span-12 grid grid-cols-12 gap-4 min-h-0">
             {/* Category Breakdown */}
-            <div className="col-span-4 bg-[#141414] border border-[#2a2d30] rounded p-6 flex flex-col gap-6 min-h-0">
-              <span className="text-[12px] font-black uppercase tracking-[1.2px] text-[#e0e6ed] shrink-0">
+            <div className="col-span-5 bg-[#141414] border border-[#2a2d30] rounded-lg p-5 flex flex-col gap-4 min-h-0 overflow-hidden">
+              <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#e0e6ed] shrink-0">
                 Category Breakdown
               </span>
-              <div className="flex flex-col gap-4 flex-1 justify-center">
+              <div className="flex flex-col gap-3.5 flex-1 min-h-0 overflow-y-auto pr-1 justify-center">
                 {categoryBreakdown.map((cat) => (
                   <CategoryBar
                     key={cat.label}
@@ -913,34 +1034,45 @@ export default function DashboardPage() {
             </div>
 
             {/* AI Insights */}
-            <div className="col-span-4 bg-[#141414] border border-[#2a2d30] rounded p-6 flex flex-col gap-4 min-h-0">
+            <div className="col-span-7 bg-[#141414] border border-[#2a2d30] rounded-lg p-5 flex flex-col gap-3 min-h-0">
               <div className="flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <HiSparkles size={13} className="text-[#fdd400]" />
-                  <span className="text-[12px] font-black uppercase tracking-[1.2px] text-[#fdd400]">
+                  <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#fdd400]">
                     AI Insights
                   </span>
                 </div>
-                {report && !reportLoading && (
-                  <button
-                    onClick={handleTranslateReport}
-                    disabled={translatingReport}
-                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
-                      translatedReport
-                        ? "bg-[#fdd400]/20 text-[#fdd400]"
-                        : "bg-white/5 text-[#a6acb3] hover:bg-white/10 hover:text-[#e0e6ed]"
-                    } ${translatingReport ? "opacity-60 cursor-wait" : ""}`}
-                  >
-                    <FaLanguage size={12} />
-                    {translatingReport
-                      ? "Translating..."
-                      : translatedReport
-                        ? "English"
-                        : "Filipino"}
-                  </button>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {report && !reportLoading && (
+                    <button
+                      onClick={handleTranslateReport}
+                      disabled={translatingReport}
+                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                        translatedReport
+                          ? "bg-[#fdd400]/20 text-[#fdd400]"
+                          : "bg-white/5 text-[#a6acb3] hover:bg-white/10 hover:text-[#e0e6ed]"
+                      } ${translatingReport ? "opacity-60 cursor-wait" : ""}`}
+                    >
+                      <FaLanguage size={12} />
+                      {translatingReport
+                        ? "..."
+                        : translatedReport
+                          ? "EN"
+                          : "FIL"}
+                    </button>
+                  )}
+                  {(report || !reportLoading) && (
+                    <button
+                      onClick={() => setInsightsExpanded(true)}
+                      className="flex items-center justify-center w-7 h-7 rounded-full bg-white/5 text-[#a6acb3] hover:bg-white/10 hover:text-[#e0e6ed] transition-colors"
+                      title="Expand insights"
+                    >
+                      <FaExpand size={10} />
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-1">
                 {reportLoading ? (
                   <div className="flex flex-col items-center justify-center h-full gap-2">
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#fdd400] border-t-transparent" />
@@ -949,13 +1081,13 @@ export default function DashboardPage() {
                     </span>
                   </div>
                 ) : report ? (
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3.5">
                     {/* Overall Assessment */}
                     <div className="border-l-2 border-[#fdd400]/40 pl-3">
-                      <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#a6acb3] block mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.8px] text-[#a6acb3] block mb-1">
                         Assessment
                       </span>
-                      <p className="text-[11px] leading-[17px] text-[#e0e6ed] whitespace-pre-line">
+                      <p className="text-[12px] leading-[18px] text-[#e0e6ed] whitespace-pre-line">
                         {displayReport?.overallAssessment}
                       </p>
                     </div>
@@ -964,7 +1096,7 @@ export default function DashboardPage() {
                     {displayReport &&
                       displayReport.biggestProblems.length > 0 && (
                         <div>
-                          <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#ee7d77] block mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.8px] text-[#ee7d77] block mb-2">
                             Biggest Problems
                           </span>
                           <div className="flex flex-col gap-2">
@@ -980,7 +1112,7 @@ export default function DashboardPage() {
                                 }`}
                               >
                                 <div className="flex items-center justify-between mb-0.5">
-                                  <span className="text-[10px] font-bold text-[#e0e6ed]">
+                                  <span className="text-[11px] font-semibold text-[#e0e6ed]">
                                     {problem.issue}
                                   </span>
                                   <span
@@ -995,7 +1127,7 @@ export default function DashboardPage() {
                                     {problem.severity}
                                   </span>
                                 </div>
-                                <p className="text-[10px] leading-[15px] text-[#a6acb3]">
+                                <p className="text-[11px] leading-[16px] text-[#a6acb3]">
                                   {problem.explanation}
                                 </p>
                               </div>
@@ -1008,7 +1140,7 @@ export default function DashboardPage() {
                     {displayReport &&
                       displayReport.locationHotspots.length > 0 && (
                         <div>
-                          <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.8px] text-[#fdd400] block mb-2">
                             Location Hotspots
                           </span>
                           <div className="flex flex-col gap-2">
@@ -1018,13 +1150,13 @@ export default function DashboardPage() {
                                   key={i}
                                   className="pl-3 border-l-2 border-[#fdd400]/30"
                                 >
-                                  <span className="text-[10px] font-bold text-[#e0e6ed] block">
+                                  <span className="text-[11px] font-semibold text-[#e0e6ed] block">
                                     {hotspot.area}
                                   </span>
-                                  <p className="text-[10px] leading-[15px] text-[#a6acb3]">
+                                  <p className="text-[11px] leading-[16px] text-[#a6acb3]">
                                     {hotspot.concern}
                                   </p>
-                                  <p className="text-[10px] leading-[15px] text-[#fdd400]/60 italic mt-0.5">
+                                  <p className="text-[11px] leading-[16px] text-[#fdd400]/60 italic mt-0.5">
                                     {hotspot.recommendation}
                                   </p>
                                 </div>
@@ -1037,10 +1169,10 @@ export default function DashboardPage() {
                     {/* Congestion Analysis */}
                     {displayReport?.congestionAnalysis && (
                       <div className="border-l-2 border-[#a6acb3]/30 pl-3">
-                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#a6acb3] block mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.8px] text-[#a6acb3] block mb-1">
                           Congestion & Patterns
                         </span>
-                        <p className="text-[11px] leading-[17px] text-[#e0e6ed]">
+                        <p className="text-[12px] leading-[18px] text-[#e0e6ed]">
                           {displayReport.congestionAnalysis}
                         </p>
                       </div>
@@ -1049,10 +1181,10 @@ export default function DashboardPage() {
                     {/* Resolution Performance */}
                     {displayReport?.resolutionPerformance && (
                       <div className="border-l-2 border-[#22c55e]/40 pl-3">
-                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#22c55e] block mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.8px] text-[#22c55e] block mb-1">
                           Resolution Performance
                         </span>
-                        <p className="text-[11px] leading-[17px] text-[#e0e6ed]">
+                        <p className="text-[12px] leading-[18px] text-[#e0e6ed]">
                           {displayReport.resolutionPerformance}
                         </p>
                       </div>
@@ -1062,7 +1194,7 @@ export default function DashboardPage() {
                     {displayReport &&
                       displayReport.recommendations.length > 0 && (
                         <div>
-                          <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
+                          <span className="text-[10px] font-bold uppercase tracking-[0.8px] text-[#fdd400] block mb-2">
                             Recommendations
                           </span>
                           <div className="flex flex-col gap-1.5">
@@ -1072,10 +1204,10 @@ export default function DashboardPage() {
                                   {rec.priority}
                                 </span>
                                 <div>
-                                  <span className="text-[10px] font-bold text-[#e0e6ed] block">
+                                  <span className="text-[11px] font-semibold text-[#e0e6ed] block">
                                     {rec.action}
                                   </span>
-                                  <p className="text-[10px] leading-[14px] text-[#a6acb3]">
+                                  <p className="text-[11px] leading-[16px] text-[#a6acb3]">
                                     {rec.rationale}
                                   </p>
                                 </div>
@@ -1085,22 +1217,40 @@ export default function DashboardPage() {
                         </div>
                       )}
                   </div>
-                ) : (
-                  /* Placeholder when no report */
-                  placeholderInsights.map((insight, i) => (
-                    <div
-                      key={i}
-                      className={`pl-3 py-2 ${
-                        insight.bordered
-                          ? "border-l-2 border-[#fdd400]/40"
-                          : "pl-3"
-                      } ${i < placeholderInsights.length - 1 ? "mb-3" : ""}`}
+                ) : reportError ? (
+                  /* Error state with retry */
+                  <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-4">
+                    <span className="text-[11px] text-[#ee7d77] font-medium">
+                      Failed to generate insights
+                    </span>
+                    <span className="text-[10px] text-[#a6acb3]/70 leading-[15px]">
+                      {reportError}
+                    </span>
+                    <button
+                      onClick={handleRetryReport}
+                      className="mt-1 px-4 py-1.5 rounded-lg bg-[#fdd400]/10 text-[#fdd400] text-[10px] font-semibold hover:bg-[#fdd400]/20 transition-colors"
                     >
-                      <p className="text-[11px] leading-[18px] text-[#e0e6ed]">
-                        {insight.text}
-                      </p>
-                    </div>
-                  ))
+                      Retry
+                    </button>
+                  </div>
+                ) : (
+                  /* Placeholder when no municipality selected */
+                  <div className="flex flex-col gap-3">
+                    {placeholderInsights.map((insight, i) => (
+                      <div
+                        key={i}
+                        className={`pl-3 py-2 ${
+                          insight.bordered
+                            ? "border-l-2 border-[#fdd400]/40"
+                            : "pl-3"
+                        }`}
+                      >
+                        <p className="text-[12px] leading-[19px] text-[#e0e6ed]">
+                          {insight.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -1122,6 +1272,239 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Expanded AI Insights Modal */}
+      {insightsExpanded && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setInsightsExpanded(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[85vh] bg-[#141414] border border-[#2a2d30] rounded-xl shadow-2xl flex flex-col mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a2d30] shrink-0">
+              <div className="flex items-center gap-2.5">
+                <HiSparkles size={16} className="text-[#fdd400]" />
+                <span className="text-[14px] font-bold uppercase tracking-[0.8px] text-[#fdd400]">
+                  AI Insights
+                </span>
+                {municipality && (
+                  <span className="text-[12px] text-[#a6acb3] ml-1">
+                    — {municipality}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {report && !reportLoading && (
+                  <button
+                    onClick={handleTranslateReport}
+                    disabled={translatingReport}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                      translatedReport
+                        ? "bg-[#fdd400]/20 text-[#fdd400]"
+                        : "bg-white/5 text-[#a6acb3] hover:bg-white/10 hover:text-[#e0e6ed]"
+                    } ${translatingReport ? "opacity-60 cursor-wait" : ""}`}
+                  >
+                    <FaLanguage size={13} />
+                    {translatingReport
+                      ? "Translating..."
+                      : translatedReport
+                        ? "English"
+                        : "Filipino"}
+                  </button>
+                )}
+                <button
+                  onClick={() => setInsightsExpanded(false)}
+                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/5 text-[#a6acb3] hover:bg-white/10 hover:text-[#e0e6ed] transition-colors"
+                >
+                  <FaTimes size={12} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+              {reportLoading ? (
+                <div className="flex flex-col items-center justify-center h-40 gap-3">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#fdd400] border-t-transparent" />
+                  <span className="text-[12px] text-[#a6acb3]">
+                    Analyzing reports...
+                  </span>
+                </div>
+              ) : report ? (
+                <div className="flex flex-col gap-6">
+                  {/* Overall Assessment */}
+                  <div className="border-l-2 border-[#fdd400]/40 pl-4">
+                    <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#a6acb3] block mb-1.5">
+                      Assessment
+                    </span>
+                    <p className="text-[14px] leading-[22px] text-[#e0e6ed] whitespace-pre-line">
+                      {displayReport?.overallAssessment}
+                    </p>
+                  </div>
+
+                  {/* Biggest Problems */}
+                  {displayReport &&
+                    displayReport.biggestProblems.length > 0 && (
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#ee7d77] block mb-3">
+                          Biggest Problems
+                        </span>
+                        <div className="flex flex-col gap-3">
+                          {displayReport.biggestProblems.map((problem, i) => (
+                            <div
+                              key={i}
+                              className={`pl-4 py-3 rounded-r border-l-2 ${
+                                problem.severity === "critical"
+                                  ? "border-[#ee7d77] bg-[#ee7d77]/5"
+                                  : problem.severity === "warning"
+                                    ? "border-[#fdd400] bg-[#fdd400]/5"
+                                    : "border-[#b0c6ff] bg-[#b0c6ff]/5"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[13px] font-semibold text-[#e0e6ed]">
+                                  {problem.issue}
+                                </span>
+                                <span
+                                  className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded ${
+                                    problem.severity === "critical"
+                                      ? "bg-[#ee7d77]/15 text-[#ee7d77]"
+                                      : problem.severity === "warning"
+                                        ? "bg-[#fdd400]/15 text-[#fdd400]"
+                                        : "bg-[#b0c6ff]/15 text-[#b0c6ff]"
+                                  }`}
+                                >
+                                  {problem.severity}
+                                </span>
+                              </div>
+                              <p className="text-[13px] leading-[20px] text-[#a6acb3]">
+                                {problem.explanation}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Location Hotspots */}
+                  {displayReport &&
+                    displayReport.locationHotspots.length > 0 && (
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-3">
+                          Location Hotspots
+                        </span>
+                        <div className="flex flex-col gap-3">
+                          {displayReport.locationHotspots.map((hotspot, i) => (
+                            <div
+                              key={i}
+                              className="pl-4 border-l-2 border-[#fdd400]/30"
+                            >
+                              <span className="text-[13px] font-semibold text-[#e0e6ed] block">
+                                {hotspot.area}
+                              </span>
+                              <p className="text-[13px] leading-[20px] text-[#a6acb3]">
+                                {hotspot.concern}
+                              </p>
+                              <p className="text-[13px] leading-[20px] text-[#fdd400]/60 italic mt-0.5">
+                                {hotspot.recommendation}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Congestion Analysis */}
+                  {displayReport?.congestionAnalysis && (
+                    <div className="border-l-2 border-[#a6acb3]/30 pl-4">
+                      <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#a6acb3] block mb-1.5">
+                        Congestion & Patterns
+                      </span>
+                      <p className="text-[14px] leading-[22px] text-[#e0e6ed]">
+                        {displayReport.congestionAnalysis}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Resolution Performance */}
+                  {displayReport?.resolutionPerformance && (
+                    <div className="border-l-2 border-[#22c55e]/40 pl-4">
+                      <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#22c55e] block mb-1.5">
+                        Resolution Performance
+                      </span>
+                      <p className="text-[14px] leading-[22px] text-[#e0e6ed]">
+                        {displayReport.resolutionPerformance}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Recommendations */}
+                  {displayReport &&
+                    displayReport.recommendations.length > 0 && (
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-3">
+                          Recommendations
+                        </span>
+                        <div className="flex flex-col gap-2.5">
+                          {displayReport.recommendations.map((rec, i) => (
+                            <div key={i} className="flex gap-3 pl-1">
+                              <span className="shrink-0 flex items-center justify-center h-5 w-5 rounded-full bg-[#fdd400]/10 text-[9px] font-bold text-[#fdd400] mt-0.5">
+                                {rec.priority}
+                              </span>
+                              <div>
+                                <span className="text-[13px] font-semibold text-[#e0e6ed] block">
+                                  {rec.action}
+                                </span>
+                                <p className="text-[13px] leading-[20px] text-[#a6acb3]">
+                                  {rec.rationale}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              ) : reportError ? (
+                <div className="flex flex-col items-center justify-center h-40 gap-3 text-center">
+                  <span className="text-[13px] text-[#ee7d77] font-medium">
+                    Failed to generate insights
+                  </span>
+                  <span className="text-[12px] text-[#a6acb3]/70 leading-[18px]">
+                    {reportError}
+                  </span>
+                  <button
+                    onClick={handleRetryReport}
+                    className="mt-1 px-5 py-2 rounded-lg bg-[#fdd400]/10 text-[#fdd400] text-[11px] font-semibold hover:bg-[#fdd400]/20 transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {placeholderInsights.map((insight, i) => (
+                    <div
+                      key={i}
+                      className={`pl-4 py-2 ${
+                        insight.bordered
+                          ? "border-l-2 border-[#fdd400]/40"
+                          : ""
+                      }`}
+                    >
+                      <p className="text-[14px] leading-[22px] text-[#e0e6ed]">
+                        {insight.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Pin Detail Modal — same as main app */}
       {viewingPin && (
