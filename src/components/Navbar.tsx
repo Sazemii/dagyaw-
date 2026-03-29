@@ -184,7 +184,7 @@ export default function Navbar({
     [onSelectMunicipality],
   );
 
-  const iconBtnCls = `flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+  const iconBtnCls = `flex h-9 w-9 items-center justify-center rounded-full transition-all sm:h-10 sm:w-10 ${
     isDark
       ? "text-neutral-400 hover:text-[#f5c542] hover:bg-white/[0.06]"
       : "text-neutral-500 hover:text-[#b8860b] hover:bg-black/[0.06]"
@@ -193,31 +193,34 @@ export default function Navbar({
   const showResults = showDropdown && (suggestions.length > 0 || searching || loading || selected || (query.length >= 2 && !searching && suggestions.length === 0));
 
   return (
-    <nav
-      className="fixed top-0 right-0 left-0 z-[1000] flex h-12 items-center justify-center px-4 sm:px-6"
-      style={{
-        background: isDark
-          ? "rgba(10, 10, 10, 0.55)"
-          : "rgba(255, 255, 255, 0.55)",
-        backdropFilter: "blur(16px) saturate(180%)",
-        WebkitBackdropFilter: "blur(16px) saturate(180%)",
-        borderBottom: isDark
-          ? "1px solid rgba(255, 255, 255, 0.06)"
-          : "1px solid rgba(0, 0, 0, 0.08)",
-      }}
-    >
-      <div className="flex w-full max-w-3xl items-center gap-4">
+    <nav className="fixed top-3.5 left-1/2 z-[1000] -translate-x-1/2">
+      <div
+        className="flex items-center gap-3.5 rounded-full px-5 py-2.5 sm:gap-4 sm:px-7 sm:py-3"
+        style={{
+          background: isDark
+            ? "linear-gradient(145deg, rgba(22, 22, 22, 0.88), rgba(10, 10, 10, 0.72))"
+            : "linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(246, 246, 246, 0.74))",
+          backdropFilter: "blur(20px) saturate(180%)",
+          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+          border: isDark
+            ? "1px solid rgba(255, 255, 255, 0.12)"
+            : "1px solid rgba(0, 0, 0, 0.1)",
+          boxShadow: isDark
+            ? "0 10px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05)"
+            : "0 10px 28px rgba(0,0,0,0.11), inset 0 1px 0 rgba(255,255,255,0.65)",
+        }}
+      >
         {/* Logo + App name */}
         <div className="flex shrink-0 items-center gap-2.5">
           <Image
             src="/Dagyaw-Logo.svg"
             alt="Dagyaw"
-            width={28}
-            height={28}
-            className="rounded-lg"
+            width={30}
+            height={30}
+            className="rounded-md"
           />
           <span
-            className={`text-sm font-semibold tracking-tight ${
+            className={`hidden text-base font-semibold leading-none tracking-tight sm:block ${
               isDark ? "text-neutral-100" : "text-neutral-800"
             }`}
           >
@@ -226,11 +229,11 @@ export default function Navbar({
         </div>
 
         {/* Search bar - always visible */}
-        <div className="relative flex-1 min-w-0" ref={searchRef}>
-          <div className="relative">
+        <div className="relative min-w-0" ref={searchRef}>
+          <div className="relative flex items-center">
             <FaSearch
-              size={11}
-              className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${
+              size={14}
+              className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 ${
                 isDark ? "text-neutral-500" : "text-neutral-400"
               }`}
             />
@@ -242,17 +245,17 @@ export default function Navbar({
               onFocus={() => {
                 if (query.trim().length >= 2 || selected) setShowDropdown(true);
               }}
-              placeholder="Search city or municipality..."
-              className={`w-full rounded-lg border py-1.5 pl-8 pr-8 text-xs outline-none transition-all ${
+              placeholder="Search municipality..."
+              className={`h-10 w-52 rounded-full border pl-11 pr-10 text-sm leading-none outline-none transition-all placeholder:text-xs sm:w-72 ${
                 isDark
-                  ? "border-white/10 bg-white/5 text-white placeholder-neutral-500 focus:border-[#f5c542]/40 focus:ring-1 focus:ring-[#f5c542]/20"
-                  : "border-black/10 bg-black/5 text-neutral-900 placeholder-neutral-400 focus:border-[#b8860b]/40 focus:ring-1 focus:ring-[#b8860b]/20"
+                  ? "border-white/10 bg-white/[0.06] text-white placeholder-neutral-500 focus:border-[#f5c542]/40 focus:ring-1 focus:ring-[#f5c542]/20"
+                  : "border-black/8 bg-black/[0.04] text-neutral-900 placeholder-neutral-400 focus:border-[#b8860b]/40 focus:ring-1 focus:ring-[#b8860b]/20"
               }`}
             />
             {searching && (
               <FaSpinner
-                size={11}
-                className={`absolute right-3 top-1/2 -translate-y-1/2 animate-spin ${
+                size={13}
+                className={`absolute right-4 top-1/2 -translate-y-1/2 animate-spin ${
                   isDark ? "text-[#f5c542]" : "text-[#b8860b]"
                 }`}
               />
@@ -267,11 +270,11 @@ export default function Navbar({
                   setShowDropdown(false);
                   searchInputRef.current?.focus();
                 }}
-                className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
                   isDark ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-400 hover:text-neutral-600"
                 }`}
               >
-                <FaTimes size={10} />
+                <FaTimes size={11} />
               </button>
             )}
           </div>
@@ -279,7 +282,7 @@ export default function Navbar({
           {/* Search results dropdown */}
           {showResults && (
             <div
-              className={`absolute left-0 top-full mt-2 w-80 overflow-hidden rounded-xl border shadow-2xl dropdown-animate ${
+              className={`absolute left-0 top-full mt-3.5 w-80 overflow-hidden rounded-2xl border shadow-2xl dropdown-animate sm:w-96 ${
                 isDark
                   ? "border-white/10 bg-[#141414]/98 backdrop-blur-2xl"
                   : "border-black/10 bg-white/98 backdrop-blur-2xl"
@@ -295,28 +298,28 @@ export default function Navbar({
                     <button
                       key={`${place.name}-${i}`}
                       onClick={() => handleSelect(place)}
-                      className={`group flex w-full items-start gap-3 px-4 py-3 text-left transition-all ${
+                      className={`group flex w-full items-center gap-3.5 px-5 py-3.5 text-left transition-all ${
                         isDark
                           ? "text-neutral-300 hover:bg-white/[0.04]"
                           : "text-neutral-700 hover:bg-black/[0.04]"
                       }`}
                     >
                       <FaMapMarkerAlt
-                        size={12}
-                        className={`mt-1 shrink-0 transition-transform group-hover:scale-110 ${
+                        size={13}
+                        className={`shrink-0 transition-transform group-hover:scale-110 ${
                           isDark ? "text-neutral-500 group-hover:text-[#f5c542]" : "text-neutral-400 group-hover:text-[#b8860b]"
                         }`}
                       />
                       <div className="min-w-0">
                         <p
-                          className={`text-xs font-semibold truncate ${
+                          className={`truncate text-[13px] font-semibold leading-tight ${
                             isDark ? "text-white group-hover:text-[#f5c542]" : "text-neutral-900 group-hover:text-[#b8860b]"
                           }`}
                         >
                           {place.name}
                         </p>
                         <p
-                          className={`text-[10px] truncate leading-relaxed ${
+                          className={`truncate text-[11px] leading-relaxed ${
                             isDark ? "text-neutral-500" : "text-neutral-400"
                           }`}
                         >
@@ -446,21 +449,21 @@ export default function Navbar({
         </div>
 
         {/* Controls group */}
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5">
           {/* Theme toggle */}
           <button
             onClick={onToggleTheme}
             className={iconBtnCls}
             title={isDark ? "Light mode" : "Dark mode"}
           >
-            {isDark ? <FaSun size={13} /> : <FaMoon size={13} />}
+            {isDark ? <FaSun size={14} /> : <FaMoon size={14} />}
           </button>
 
           {/* Dashboard */}
           {isCommunityWatcher && user && (
             <button
               onClick={onNavigateDashboard}
-              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+              className={`flex h-8 w-8 items-center justify-center rounded-full transition-all ${
                 isDark
                   ? "text-[#f5c542]/80 hover:text-[#f5c542] hover:bg-[#f5c542]/10"
                   : "text-[#b8860b]/80 hover:text-[#b8860b] hover:bg-[#b8860b]/10"
@@ -473,7 +476,7 @@ export default function Navbar({
 
           {/* Divider before profile */}
           <div
-            className={`mx-1.5 h-5 w-px ${isDark ? "bg-white/10" : "bg-black/10"}`}
+            className={`mx-1.5 h-6 w-px ${isDark ? "bg-white/10" : "bg-black/10"}`}
           />
 
           {/* Profile / Account */}
@@ -495,7 +498,7 @@ export default function Navbar({
                 </button>
                 {showUserMenu && (
                   <div
-                    className={`absolute right-0 mt-2 w-48 overflow-hidden rounded-xl border shadow-xl ${
+                    className={`absolute right-0 mt-3 w-52 overflow-hidden rounded-xl border shadow-xl ${
                       isDark
                         ? "border-white/10 bg-[#141414]/90 backdrop-blur-xl"
                         : "border-black/10 bg-white/90 backdrop-blur-xl"
@@ -518,7 +521,7 @@ export default function Navbar({
                         onCloseUserMenu();
                         signOut();
                       }}
-                      className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-xs transition-colors ${
+                      className={`flex w-full items-center gap-2.5 px-3.5 py-3 text-left text-sm transition-colors ${
                         isDark
                           ? "text-neutral-300 hover:bg-white/5"
                           : "text-neutral-700 hover:bg-black/5"
