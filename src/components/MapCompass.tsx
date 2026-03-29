@@ -16,7 +16,7 @@ export default function MapCompass({ bearing, onResetNorth }: MapCompassProps) {
   return (
     <button
       onClick={onResetNorth}
-      className={`fixed top-16 right-5 z-[1000] flex h-14 w-14 items-center justify-center rounded-full border backdrop-blur-md transition-colors sm:right-6 ${
+      className={`fixed top-24 right-5 z-[1000] flex h-14 w-14 items-center justify-center rounded-full border backdrop-blur-md transition-colors sm:right-6 ${
         isDark
           ? "border-neutral-700 bg-[#0f0f0f]/80 hover:bg-[#1a1a1a]"
           : "border-neutral-300 bg-white/80 hover:bg-white"
@@ -33,7 +33,10 @@ export default function MapCompass({ bearing, onResetNorth }: MapCompassProps) {
         height="26"
         viewBox="0 0 24 24"
         fill="none"
-        style={{ transform: `rotate(${rotation}deg)`, transition: "transform 0.15s ease-out" }}
+        style={{
+          transform: `rotate(${rotation}deg)`,
+          transition: "transform 0.15s ease-out",
+        }}
       >
         {/* North half (red) */}
         <polygon

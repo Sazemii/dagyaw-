@@ -19,10 +19,18 @@ import PinDetailModal from "../components/PinDetailModal";
 import InsightPanel from "../components/InsightPanel";
 import LocateButton from "../components/LocateButton";
 import MapCompass from "../components/MapCompass";
-import { FaCheckCircle, FaWater, FaRoad, FaExclamationTriangle } from "react-icons/fa";
+import {
+  FaCheckCircle,
+  FaWater,
+  FaRoad,
+  FaExclamationTriangle,
+} from "react-icons/fa";
 import Navbar from "../components/Navbar";
 import CityStats from "../components/CityStats";
-import { computeFloodWasteAlerts, type FloodWasteAlert } from "../data/flood-zones";
+import {
+  computeFloodWasteAlerts,
+  type FloodWasteAlert,
+} from "../data/flood-zones";
 import { computeProneZones, type ProneZone } from "../lib/prone-zones";
 
 const MapView = dynamic(() => import("../components/MapView"), { ssr: false });
@@ -35,13 +43,21 @@ export default function Home() {
 
   const [pins, setPins] = useState<Pin[]>([]);
   const [mode, setMode] = useState<Mode>("idle");
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+    null,
+  );
+  const [pendingLocation, setPendingLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [viewingPin, setViewingPin] = useState<Pin | null>(null);
   const [theme, setTheme] = useState<Theme>("dark");
   const [locateTrigger, setLocateTrigger] = useState(0);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
-  const [flyTarget, setFlyTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [flyTarget, setFlyTarget] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [cityStatsName, setCityStatsName] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
   const [showFloodZones, setShowFloodZones] = useState(false);
@@ -50,7 +66,9 @@ export default function Home() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [viewingInsight, setViewingInsight] = useState<Insight | null>(null);
   const [insightLoading, setInsightLoading] = useState(false);
-  const [generatedFloodAlertIds, setGeneratedFloodAlertIds] = useState<Set<string>>(new Set());
+  const [generatedFloodAlertIds, setGeneratedFloodAlertIds] = useState<
+    Set<string>
+  >(new Set());
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [mapBearing, setMapBearing] = useState(0);
@@ -60,7 +78,7 @@ export default function Home() {
 
   const floodAlerts = useMemo<FloodWasteAlert[]>(
     () => (showFloodZones ? computeFloodWasteAlerts(pins, 4) : []),
-    [pins, showFloodZones]
+    [pins, showFloodZones],
   );
 
   const proneZones = useMemo<ProneZone[]>(() => {
@@ -70,7 +88,9 @@ export default function Home() {
     return zones;
   }, [pins, showPotholeZones, showAccidentZones]);
 
-  const visiblePins = showResolved ? pins : pins.filter((p) => p.status !== "resolved");
+  const visiblePins = showResolved
+    ? pins
+    : pins.filter((p) => p.status !== "resolved");
 
   useEffect(() => {
     fetchPins()
@@ -86,7 +106,13 @@ export default function Home() {
           .filter((p) => p.id !== pin.id && p.status === "active")
           .map((p) => {
             const dist = haversineKm(pin.lat, pin.lng, p.lat, p.lng) * 1000;
-            return { id: p.id, categoryId: p.categoryId, distance: dist, description: p.description, createdAt: p.createdAt };
+            return {
+              id: p.id,
+              categoryId: p.categoryId,
+              distance: dist,
+              description: p.description,
+              createdAt: p.createdAt,
+            };
           })
           .filter((p) => p.distance <= 500)
           .slice(0, 10);
@@ -118,7 +144,7 @@ export default function Home() {
         setInsightLoading(false);
       }
     },
-    [pins]
+    [pins],
   );
 
   const handleReportClick = useCallback(() => {
@@ -146,7 +172,7 @@ export default function Home() {
       setPendingLocation({ lat, lng });
       setMode("reporting");
     },
-    [mode, selectedCategory]
+    [mode, selectedCategory],
   );
 
   const handleReportSubmit = useCallback(
@@ -172,7 +198,7 @@ export default function Home() {
       setSelectedCategory(null);
       setPendingLocation(null);
     },
-    [pendingLocation, selectedCategory, triggerInsightGeneration]
+    [pendingLocation, selectedCategory, triggerInsightGeneration],
   );
 
   const handlePinClick = useCallback((pin: Pin) => {
@@ -190,7 +216,7 @@ export default function Home() {
         alert("Failed to resolve. Please try again.");
       }
     },
-    []
+    [],
   );
 
   const handlePinUpdate = useCallback((updated: Pin) => {
@@ -225,7 +251,7 @@ export default function Home() {
       setFlyTarget({ lat, lng });
       setCityStatsName(name);
     },
-    []
+    [],
   );
 
   const handleInsightClick = useCallback((insight: Insight) => {
@@ -236,7 +262,10 @@ export default function Home() {
     async (alert: FloodWasteAlert) => {
       if (generatedFloodAlertIds.has(alert.id)) {
         const existing = insights.find(
-          (i) => i.type === "waste_flood" && i.lat === alert.lat && i.lng === alert.lng
+          (i) =>
+            i.type === "waste_flood" &&
+            i.lat === alert.lat &&
+            i.lng === alert.lng,
         );
         if (existing) {
           setViewingInsight(existing);
@@ -286,7 +315,7 @@ export default function Home() {
         setInsightLoading(false);
       }
     },
-    [pins, insights, generatedFloodAlertIds]
+    [pins, insights, generatedFloodAlertIds],
   );
 
   return (
@@ -331,14 +360,30 @@ export default function Home() {
 
         {/* Insight loading indicator */}
         {insightLoading && (
-          <div className="fixed top-16 right-5 z-[1001] flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-950/80 px-3 py-1.5 backdrop-blur-md sm:right-6">
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
-            <span className="text-[10px] font-medium text-blue-300">Analyzing...</span>
+          <div
+            className={`fixed top-16 right-5 z-[1001] flex items-center gap-2 rounded-full border px-3 py-1.5 backdrop-blur-md sm:right-6 ${
+              isDark
+                ? "border-[#f5c542]/20 bg-[#141414]/85"
+                : "border-[#b8860b]/15 bg-white/85"
+            }`}
+          >
+            <div
+              className={`h-3 w-3 animate-spin rounded-full border-2 border-t-transparent ${
+                isDark ? "border-[#f5c542]" : "border-[#b8860b]"
+              }`}
+            />
+            <span
+              className={`text-[10px] font-medium ${
+                isDark ? "text-[#f5c542]/80" : "text-[#b8860b]/80"
+              }`}
+            >
+              Analyzing...
+            </span>
           </div>
         )}
 
         {/* Map overlay toggles */}
-        <div className="fixed bottom-20 left-5 z-[1000] flex flex-col gap-2 sm:left-6">
+        <div className="fixed bottom-5 left-5 z-[1000] flex flex-col gap-2 sm:left-6">
           {/* Flood zones toggle */}
           <button
             onClick={() => setShowFloodZones((v) => !v)}
@@ -364,12 +409,16 @@ export default function Home() {
           {/* Pothole-prone toggle */}
           <button
             onClick={() => setShowPotholeZones((v) => !v)}
-            title={showPotholeZones ? "Hide pothole-prone zones" : "Show pothole-prone zones"}
+            title={
+              showPotholeZones
+                ? "Hide pothole-prone zones"
+                : "Show pothole-prone zones"
+            }
             className={`flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md transition-all ${
               showPotholeZones
                 ? isDark
-                  ? "border-stone-400/40 bg-stone-500/15 text-stone-300"
-                  : "border-stone-600/40 bg-stone-500/15 text-stone-600"
+                  ? "border-orange-400/40 bg-orange-500/15 text-orange-300"
+                  : "border-orange-600/40 bg-orange-500/15 text-orange-600"
                 : isDark
                   ? "border-neutral-700 bg-[#0f0f0f]/80 text-neutral-400 hover:bg-[#1a1a1a]"
                   : "border-neutral-300 bg-white/80 text-neutral-500 hover:bg-white"
@@ -386,12 +435,16 @@ export default function Home() {
           {/* Accident-prone toggle */}
           <button
             onClick={() => setShowAccidentZones((v) => !v)}
-            title={showAccidentZones ? "Hide accident-prone zones" : "Show accident-prone zones"}
+            title={
+              showAccidentZones
+                ? "Hide accident-prone zones"
+                : "Show accident-prone zones"
+            }
             className={`flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md transition-all ${
               showAccidentZones
                 ? isDark
-                  ? "border-amber-400/40 bg-amber-500/15 text-amber-300"
-                  : "border-amber-600/40 bg-amber-500/15 text-amber-600"
+                  ? "border-red-400/40 bg-red-500/15 text-red-300"
+                  : "border-red-600/40 bg-red-500/15 text-red-600"
                 : isDark
                   ? "border-neutral-700 bg-[#0f0f0f]/80 text-neutral-400 hover:bg-[#1a1a1a]"
                   : "border-neutral-300 bg-white/80 text-neutral-500 hover:bg-white"
@@ -434,10 +487,7 @@ export default function Home() {
         {/* Interactive compass */}
         <MapCompass bearing={mapBearing} onResetNorth={handleResetNorth} />
 
-        <ReportButton
-          isActive={mode !== "idle"}
-          onClick={handleReportClick}
-        />
+        <ReportButton isActive={mode !== "idle"} onClick={handleReportClick} />
 
         {mode === "selecting" && (
           <CategorySelector
@@ -447,7 +497,10 @@ export default function Home() {
         )}
 
         {mode === "placing" && selectedCategory && (
-          <PlacementBanner category={selectedCategory} onCancel={handleCancel} />
+          <PlacementBanner
+            category={selectedCategory}
+            onCancel={handleCancel}
+          />
         )}
 
         {mode === "reporting" && selectedCategory && (
@@ -481,20 +534,25 @@ export default function Home() {
           />
         )}
 
-        {showAuthModal && (
-          <AuthModal onClose={() => setShowAuthModal(false)} />
-        )}
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       </main>
     </ThemeContext>
   );
 }
 
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+function haversineKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

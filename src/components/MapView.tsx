@@ -339,18 +339,26 @@ export default function MapView({
   );
 
   useEffect(() => {
-    if (resetNorthTrigger > 0 && mapRef.current) {
-      mapRef.current.easeTo({ bearing: 0, duration: 500 });
+    try {
+      if (resetNorthTrigger > 0 && mapRef.current) {
+        mapRef.current.easeTo({ bearing: 0, duration: 500 });
+      }
+    } catch {
+      // map instance may be stale during HMR
     }
   }, [resetNorthTrigger]);
 
   useEffect(() => {
-    if (flyTarget && mapRef.current) {
-      mapRef.current.flyTo({
-        center: [flyTarget.lng, flyTarget.lat],
-        zoom: 13,
-        duration: 2000,
-      });
+    try {
+      if (flyTarget && mapRef.current) {
+        mapRef.current.flyTo({
+          center: [flyTarget.lng, flyTarget.lat],
+          zoom: 13,
+          duration: 2000,
+        });
+      }
+    } catch {
+      // map instance may be stale during HMR
     }
   }, [flyTarget]);
 
@@ -453,17 +461,31 @@ export default function MapView({
   );
 
   const handleRotate = useCallback(() => {
-    const map = mapRef.current?.getMap();
-    if (map && onBearingChange) {
-      onBearingChange(map.getBearing());
+    try {
+      const map = mapRef.current?.getMap();
+      if (map && onBearingChange) {
+        onBearingChange(map.getBearing());
+      }
+    } catch {
+      // map instance may be stale during HMR
     }
   }, [onBearingChange]);
 
   const handleStyleLoad = useCallback(() => {
-    const map = mapRef.current?.getMap();
+    let map;
+    try {
+      map = mapRef.current?.getMap();
+    } catch {
+      return;
+    }
     if (!map) return;
 
-    const style = map.getStyle();
+    let style;
+    try {
+      style = map.getStyle();
+    } catch {
+      return;
+    }
     if (!style?.layers) return;
 
     for (const layer of style.layers) {
