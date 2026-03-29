@@ -12,7 +12,6 @@ import {
   FaUser,
   FaSignOutAlt,
   FaTachometerAlt,
-  FaTimes,
   FaMapMarkerAlt,
   FaSpinner,
   FaCheck,
@@ -125,10 +124,7 @@ export default function Navbar({
   useEffect(() => {
     if (!showDropdown) return;
     const handler = (e: MouseEvent) => {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(e.target as Node)
-      ) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
       }
     };
@@ -190,12 +186,18 @@ export default function Navbar({
       : "text-neutral-500 hover:text-[#b8860b] hover:bg-black/[0.06]"
   }`;
 
-  const showResults = showDropdown && (suggestions.length > 0 || searching || loading || selected || (query.length >= 2 && !searching && suggestions.length === 0));
+  const showResults =
+    showDropdown &&
+    (suggestions.length > 0 ||
+      searching ||
+      loading ||
+      selected ||
+      (query.length >= 2 && !searching && suggestions.length === 0));
 
   return (
     <nav className="fixed top-3.5 left-1/2 z-[1000] -translate-x-1/2">
       <div
-        className="flex items-center gap-3.5 rounded-full px-5 py-2.5 sm:gap-4 sm:px-7 sm:py-3"
+        className="flex items-center gap-4 rounded-full px-3 py-2.5 sm:gap-4 sm:px-8 sm:py-3"
         style={{
           background: isDark
             ? "linear-gradient(145deg, rgba(22, 22, 22, 0.88), rgba(10, 10, 10, 0.72))"
@@ -211,7 +213,7 @@ export default function Navbar({
         }}
       >
         {/* Logo + App name */}
-        <div className="flex shrink-0 items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-2 pl-0.5 sm:gap-2.5 sm:pl-1.5">
           <Image
             src="/Dagyaw-Logo.svg"
             alt="Dagyaw"
@@ -232,8 +234,8 @@ export default function Navbar({
         <div className="relative min-w-0" ref={searchRef}>
           <div className="relative flex items-center">
             <FaSearch
-              size={14}
-              className={`pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 ${
+              size={13}
+              className={`pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${
                 isDark ? "text-neutral-500" : "text-neutral-400"
               }`}
             />
@@ -245,8 +247,9 @@ export default function Navbar({
               onFocus={() => {
                 if (query.trim().length >= 2 || selected) setShowDropdown(true);
               }}
-              placeholder="Search municipality..."
-              className={`h-10 w-52 rounded-full border pl-11 pr-10 text-sm leading-none outline-none transition-all placeholder:text-xs sm:w-72 ${
+              placeholder="Search city or municipality"
+              style={{ paddingLeft: "2.25rem" }}
+              className={`h-9 w-[32vw] min-w-[8rem] max-w-[11rem] rounded-full border pr-4 text-xs leading-none outline-none transition-all placeholder:text-[11px] sm:h-10 sm:w-72 sm:max-w-none sm:pr-4 sm:placeholder:text-xs ${
                 isDark
                   ? "border-white/10 bg-white/[0.06] text-white placeholder-neutral-500 focus:border-[#f5c542]/40 focus:ring-1 focus:ring-[#f5c542]/20"
                   : "border-black/8 bg-black/[0.04] text-neutral-900 placeholder-neutral-400 focus:border-[#b8860b]/40 focus:ring-1 focus:ring-[#b8860b]/20"
@@ -255,34 +258,17 @@ export default function Navbar({
             {searching && (
               <FaSpinner
                 size={13}
-                className={`absolute right-4 top-1/2 -translate-y-1/2 animate-spin ${
+                className={`absolute right-3 top-1/2 -translate-y-1/2 animate-spin ${
                   isDark ? "text-[#f5c542]" : "text-[#b8860b]"
                 }`}
               />
-            )}
-            {query && !searching && (
-              <button
-                onClick={() => {
-                  setQuery("");
-                  setSuggestions([]);
-                  setSelected(null);
-                  setStats(null);
-                  setShowDropdown(false);
-                  searchInputRef.current?.focus();
-                }}
-                className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ${
-                  isDark ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-400 hover:text-neutral-600"
-                }`}
-              >
-                <FaTimes size={11} />
-              </button>
             )}
           </div>
 
           {/* Search results dropdown */}
           {showResults && (
             <div
-              className={`absolute left-0 top-full mt-3.5 w-80 overflow-hidden rounded-2xl border shadow-2xl dropdown-animate sm:w-96 ${
+              className={`absolute left-1/2 -translate-x-1/2 top-full mt-3.5 w-[min(88vw,20rem)] overflow-hidden rounded-2xl border shadow-2xl dropdown-animate sm:w-96 ${
                 isDark
                   ? "border-white/10 bg-[#141414]/98 backdrop-blur-2xl"
                   : "border-black/10 bg-white/98 backdrop-blur-2xl"
@@ -307,13 +293,17 @@ export default function Navbar({
                       <FaMapMarkerAlt
                         size={13}
                         className={`shrink-0 transition-transform group-hover:scale-110 ${
-                          isDark ? "text-neutral-500 group-hover:text-[#f5c542]" : "text-neutral-400 group-hover:text-[#b8860b]"
+                          isDark
+                            ? "text-neutral-500 group-hover:text-[#f5c542]"
+                            : "text-neutral-400 group-hover:text-[#b8860b]"
                         }`}
                       />
                       <div className="min-w-0">
                         <p
                           className={`truncate text-[13px] font-semibold leading-tight ${
-                            isDark ? "text-white group-hover:text-[#f5c542]" : "text-neutral-900 group-hover:text-[#b8860b]"
+                            isDark
+                              ? "text-white group-hover:text-[#f5c542]"
+                              : "text-neutral-900 group-hover:text-[#b8860b]"
                           }`}
                         >
                           {place.name}
@@ -333,7 +323,9 @@ export default function Navbar({
 
               {/* Searching indicator */}
               {searching && suggestions.length === 0 && (
-                <div className={`flex items-center justify-center gap-2 px-4 py-6 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
+                <div
+                  className={`flex items-center justify-center gap-2 px-4 py-6 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+                >
                   <FaSpinner className="animate-spin-slow" />
                   Searching for places...
                 </div>
@@ -341,7 +333,9 @@ export default function Navbar({
 
               {/* Loading stats */}
               {loading && (
-                <div className={`flex items-center justify-center gap-2 px-4 py-6 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
+                <div
+                  className={`flex items-center justify-center gap-2 px-4 py-6 text-xs ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+                >
                   <FaSpinner className="animate-spin-slow" />
                   Fetching municipality data...
                 </div>
@@ -358,9 +352,13 @@ export default function Navbar({
                     >
                       {stats.municipality}
                     </h3>
-                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                      isDark ? "bg-[#f5c542]/10 text-[#f5c542]" : "bg-[#b8860b]/10 text-[#b8860b]"
-                    }`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                        isDark
+                          ? "bg-[#f5c542]/10 text-[#f5c542]"
+                          : "bg-[#b8860b]/10 text-[#b8860b]"
+                      }`}
+                    >
                       Live Stats
                     </span>
                   </div>
@@ -374,11 +372,20 @@ export default function Navbar({
                       }`}
                     >
                       <div className="relative z-10 text-center">
-                        <p className="text-xl font-black text-red-500">{stats.active}</p>
-                        <p className={`text-[9px] font-bold uppercase tracking-wide ${isDark ? "text-red-400/60" : "text-red-600/70"}`}>Active</p>
+                        <p className="text-xl font-black text-red-500">
+                          {stats.active}
+                        </p>
+                        <p
+                          className={`text-[9px] font-bold uppercase tracking-wide ${isDark ? "text-red-400/60" : "text-red-600/70"}`}
+                        >
+                          Active
+                        </p>
                       </div>
                       <div className="absolute -right-2 -bottom-2 opacity-[0.05] transition-all group-hover:scale-125">
-                        <FaExclamationCircle size={40} className="text-red-500" />
+                        <FaExclamationCircle
+                          size={40}
+                          className="text-red-500"
+                        />
                       </div>
                     </div>
 
@@ -390,8 +397,14 @@ export default function Navbar({
                       }`}
                     >
                       <div className="relative z-10 text-center">
-                        <p className="text-xl font-black text-green-500">{stats.resolved}</p>
-                        <p className={`text-[9px] font-bold uppercase tracking-wide ${isDark ? "text-green-400/60" : "text-green-600/70"}`}>Resolved</p>
+                        <p className="text-xl font-black text-green-500">
+                          {stats.resolved}
+                        </p>
+                        <p
+                          className={`text-[9px] font-bold uppercase tracking-wide ${isDark ? "text-green-400/60" : "text-green-600/70"}`}
+                        >
+                          Resolved
+                        </p>
                       </div>
                       <div className="absolute -right-2 -bottom-2 opacity-[0.05] transition-all group-hover:scale-125">
                         <FaCheck size={40} className="text-green-500" />
@@ -401,55 +414,96 @@ export default function Navbar({
 
                   <div className="mt-4">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className={`text-[10px] font-medium ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
+                      <span
+                        className={`text-[10px] font-medium ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+                      >
                         Resolution Rate
                       </span>
-                      <span className={`text-xs font-bold ${isDark ? "text-white" : "text-neutral-900"}`}>
-                        {stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}%
+                      <span
+                        className={`text-xs font-bold ${isDark ? "text-white" : "text-neutral-900"}`}
+                      >
+                        {stats.total > 0
+                          ? Math.round((stats.resolved / stats.total) * 100)
+                          : 0}
+                        %
                       </span>
                     </div>
 
                     {stats.total > 0 ? (
-                      <div className={`h-2 w-full overflow-hidden rounded-full ${isDark ? "bg-neutral-800" : "bg-neutral-200 shadow-inner"}`}>
+                      <div
+                        className={`h-2 w-full overflow-hidden rounded-full ${isDark ? "bg-neutral-800" : "bg-neutral-200 shadow-inner"}`}
+                      >
                         <div className="flex h-full transition-all duration-1000 ease-out">
-                          <div className="h-full bg-gradient-to-r from-green-600 to-green-400 shadow-[0_0_8px_rgba(34,197,94,0.4)]" style={{ width: `${(stats.resolved / stats.total) * 100}%` }} />
-                          <div className="h-full bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.4)]" style={{ width: `${(stats.active / stats.total) * 100}%` }} />
+                          <div
+                            className="h-full bg-gradient-to-r from-green-600 to-green-400 shadow-[0_0_8px_rgba(34,197,94,0.4)]"
+                            style={{
+                              width: `${(stats.resolved / stats.total) * 100}%`,
+                            }}
+                          />
+                          <div
+                            className="h-full bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_8px_rgba(239,68,68,0.4)]"
+                            style={{
+                              width: `${(stats.active / stats.total) * 100}%`,
+                            }}
+                          />
                         </div>
                       </div>
                     ) : (
-                      <div className={`flex h-8 items-center justify-center rounded-lg border border-dashed ${
-                        isDark ? "border-white/5 bg-white/2" : "border-black/5 bg-black/2"
-                      }`}>
-                        <p className={`text-[10px] italic ${isDark ? "text-neutral-600" : "text-neutral-400"}`}>
+                      <div
+                        className={`flex h-8 items-center justify-center rounded-lg border border-dashed ${
+                          isDark
+                            ? "border-white/5 bg-white/2"
+                            : "border-black/5 bg-black/2"
+                        }`}
+                      >
+                        <p
+                          className={`text-[10px] italic ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
+                        >
                           No reports recorded yet
                         </p>
                       </div>
                     )}
 
                     <div className="mt-3 flex items-center justify-center gap-1.5">
-                      <div className={`h-1 w-1 rounded-full ${isDark ? "bg-neutral-700" : "bg-neutral-300"}`} />
-                      <span className={`text-[9px] font-medium ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
+                      <div
+                        className={`h-1 w-1 rounded-full ${isDark ? "bg-neutral-700" : "bg-neutral-300"}`}
+                      />
+                      <span
+                        className={`text-[9px] font-medium ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+                      >
                         Total: {stats.total} reports
                       </span>
-                      <div className={`h-1 w-1 rounded-full ${isDark ? "bg-neutral-700" : "bg-neutral-300"}`} />
+                      <div
+                        className={`h-1 w-1 rounded-full ${isDark ? "bg-neutral-700" : "bg-neutral-300"}`}
+                      />
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Empty state */}
-              {query.length >= 2 && !searching && !loading && !selected && suggestions.length === 0 && (
-                <div className={`px-4 py-8 text-center ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
-                  <p className="text-xs font-medium">No results found for &ldquo;{query}&rdquo;</p>
-                  <p className="mt-1 text-[10px] opacity-70">Try a different city or municipality name</p>
-                </div>
-              )}
+              {query.length >= 2 &&
+                !searching &&
+                !loading &&
+                !selected &&
+                suggestions.length === 0 && (
+                  <div
+                    className={`px-4 py-8 text-center ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+                  >
+                    <p className="text-xs font-medium">
+                      No results found for &ldquo;{query}&rdquo;
+                    </p>
+                    <p className="mt-1 text-[10px] opacity-70">
+                      Try a different city or municipality name
+                    </p>
+                  </div>
+                )}
             </div>
           )}
         </div>
 
         {/* Controls group */}
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1 pr-0.5 sm:gap-1.5 sm:pr-1.5 ">
           {/* Theme toggle */}
           <button
             onClick={onToggleTheme}
@@ -476,7 +530,7 @@ export default function Navbar({
 
           {/* Divider before profile */}
           <div
-            className={`mx-1.5 h-6 w-px ${isDark ? "bg-white/10" : "bg-black/10"}`}
+            className={`mx-0.5 h-5 w-px sm:mx-1.5 sm:h-6 ${isDark ? "bg-white/10" : "bg-black/10"}`}
           />
 
           {/* Profile / Account */}
@@ -534,7 +588,11 @@ export default function Navbar({
                 )}
               </>
             ) : (
-              <button onClick={onOpenAuth} className={iconBtnCls} title="Sign In">
+              <button
+                onClick={onOpenAuth}
+                className={iconBtnCls}
+                title="Sign In"
+              >
                 <FaUser size={13} />
               </button>
             )}

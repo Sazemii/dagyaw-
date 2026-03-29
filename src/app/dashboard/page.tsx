@@ -14,16 +14,16 @@ import type { Pin } from "../../components/MapView";
 import { getCategoryById } from "../../components/categories";
 import CategoryIcon from "../../components/CategoryIcon";
 import PinDetailModal from "../../components/PinDetailModal";
-import {
-  FaSearch,
-  FaBell,
-  FaCog,
-  FaCircle,
-  FaLanguage,
-} from "react-icons/fa";
+import { FaSearch, FaBell, FaCog, FaCircle, FaLanguage } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import type { MunicipalityReport } from "../../lib/insights/types";
-import Map, { Marker, NavigationControl, Source, Layer, type MapRef } from "react-map-gl/maplibre";
+import Map, {
+  Marker,
+  NavigationControl,
+  Source,
+  Layer,
+  type MapRef,
+} from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 interface Place {
@@ -44,7 +44,7 @@ async function searchPlaces(query: string): Promise<Place[]> {
         featuretype: "city",
         addressdetails: "1",
       }),
-    { headers: { "User-Agent": "Bayanihan-App/1.0" } }
+    { headers: { "User-Agent": "Bayanihan-App/1.0" } },
   );
   if (!res.ok) return [];
 
@@ -73,7 +73,7 @@ async function searchPlaces(query: string): Promise<Place[]> {
           lat: parseFloat(item.lat),
           lng: parseFloat(item.lon),
         };
-      }
+      },
     );
 }
 
@@ -97,10 +97,7 @@ function StatCard({
       <span className="text-[10px] font-bold uppercase tracking-[1px] text-[#a6acb3]">
         {label}
       </span>
-      <span
-        className="text-[30px] font-black leading-9"
-        style={{ color }}
-      >
+      <span className="text-[30px] font-black leading-9" style={{ color }}>
         {value}
       </span>
       <span className="text-[10px] text-[#a6acb3]/70">{subtitle}</span>
@@ -125,7 +122,8 @@ function BarChart() {
     <div className="flex items-end justify-between px-2 h-full">
       {CHART_DATA.map((bar) => {
         const totalH = bar.filled + bar.overlay;
-        const scale = maxH / Math.max(...CHART_DATA.map((b) => b.filled + b.overlay));
+        const scale =
+          maxH / Math.max(...CHART_DATA.map((b) => b.filled + b.overlay));
         return (
           <div
             key={bar.day}
@@ -199,7 +197,8 @@ function DashboardMap({
 }) {
   const mapRef = useRef<MapRef>(null);
   const boundaryFetched = useRef<string | null>(null);
-  const [boundaryGeoJSON, setBoundaryGeoJSON] = useState<GeoJSON.Feature | null>(null);
+  const [boundaryGeoJSON, setBoundaryGeoJSON] =
+    useState<GeoJSON.Feature | null>(null);
 
   useEffect(() => {
     if (center && mapRef.current) {
@@ -222,7 +221,7 @@ function DashboardMap({
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/reverse?lat=${center.lat}&lon=${center.lng}&format=json&polygon_geojson=1&zoom=10`,
-          { headers: { "User-Agent": "Bayanihan-App/1.0" } }
+          { headers: { "User-Agent": "Bayanihan-App/1.0" } },
         );
         const data = await res.json();
         if (data?.geojson) {
@@ -247,9 +246,12 @@ function DashboardMap({
     for (const layer of style.layers) {
       const id = layer.id.toLowerCase();
       if (
-        id.includes("road") || id.includes("bridge") ||
-        id.includes("tunnel") || id.includes("highway") ||
-        id.includes("street") || id.includes("path") ||
+        id.includes("road") ||
+        id.includes("bridge") ||
+        id.includes("tunnel") ||
+        id.includes("highway") ||
+        id.includes("street") ||
+        id.includes("path") ||
         id.includes("link")
       ) {
         if (layer.type === "line") {
@@ -261,7 +263,11 @@ function DashboardMap({
         map.setPaintProperty(layer.id, "fill-color", "#ffffff");
         map.setPaintProperty(layer.id, "fill-opacity", 0.04);
       }
-      if (id.includes("water") && !id.includes("name") && layer.type === "fill") {
+      if (
+        id.includes("water") &&
+        !id.includes("name") &&
+        layer.type === "fill"
+      ) {
         map.setPaintProperty(layer.id, "fill-color", "#0c1a2e");
         map.setPaintProperty(layer.id, "fill-opacity", 0.8);
       }
@@ -274,7 +280,9 @@ function DashboardMap({
         map.setPaintProperty(layer.id, "text-halo-width", 1.5);
       }
       if (
-        (id.includes("landuse") || id.includes("park") || id.includes("green")) &&
+        (id.includes("landuse") ||
+          id.includes("park") ||
+          id.includes("green")) &&
         layer.type === "fill"
       ) {
         map.setPaintProperty(layer.id, "fill-color", "#0a1a0a");
@@ -329,27 +337,66 @@ function DashboardMap({
             : "#1a1a1a";
 
         return (
-          <Marker key={pin.id} longitude={pin.lng} latitude={pin.lat} anchor="bottom">
+          <Marker
+            key={pin.id}
+            longitude={pin.lng}
+            latitude={pin.lat}
+            anchor="bottom"
+          >
             <div
               className="pin-marker cursor-pointer"
               style={{ opacity: isResolved ? 0.5 : 1 }}
-              onClick={(e) => { e.stopPropagation(); onPinClick?.(pin); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPinClick?.(pin);
+              }}
             >
-              <svg width="40" height="52" viewBox="0 0 40 52" fill="none" className="pin-drop">
+              <svg
+                width="40"
+                height="52"
+                viewBox="0 0 40 52"
+                fill="none"
+                className="pin-drop"
+              >
                 {isPending && (
                   <circle
-                    cx="20" cy="19" r="17"
-                    fill="none" stroke="#f59e0b" strokeWidth="2"
+                    cx="20"
+                    cy="19"
+                    r="17"
+                    fill="none"
+                    stroke="#f59e0b"
+                    strokeWidth="2"
                     className="pin-pending-pulse"
                   />
                 )}
                 <polygon points="14,34 26,34 20,50" fill={strokeColor} />
-                <circle cx="20" cy="19" r="17" fill={circleFill} stroke={strokeColor} strokeWidth="2.5" />
+                <circle
+                  cx="20"
+                  cy="19"
+                  r="17"
+                  fill={circleFill}
+                  stroke={strokeColor}
+                  strokeWidth="2.5"
+                />
                 <foreignObject x="8" y="7" width="24" height="24">
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "100%",
+                      height: "100%",
+                    }}
+                  >
                     <CategoryIcon
                       iconName={category.icon}
-                      color={isResolved ? "#22c55e" : isPending ? "#f59e0b" : category.color}
+                      color={
+                        isResolved
+                          ? "#22c55e"
+                          : isPending
+                            ? "#f59e0b"
+                            : category.color
+                      }
                       size={16}
                     />
                   </div>
@@ -375,7 +422,10 @@ export default function DashboardPage() {
 
   // Selected municipality
   const [municipality, setMunicipality] = useState<string | null>(null);
-  const [municipalityCoords, setMunicipalityCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [municipalityCoords, setMunicipalityCoords] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [stats, setStats] = useState<CityDetailedStats | null>(null);
   const [pins, setPins] = useState<Pin[]>([]);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -386,7 +436,8 @@ export default function DashboardPage() {
   // Report generation
   const [report, setReport] = useState<MunicipalityReport | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
-  const [translatedReport, setTranslatedReport] = useState<MunicipalityReport | null>(null);
+  const [translatedReport, setTranslatedReport] =
+    useState<MunicipalityReport | null>(null);
   const [translatingReport, setTranslatingReport] = useState(false);
 
   const handleTranslateReport = async () => {
@@ -401,9 +452,19 @@ export default function DashboardPage() {
         overallAssessment: report.overallAssessment,
         congestionAnalysis: report.congestionAnalysis,
         resolutionPerformance: report.resolutionPerformance,
-        biggestProblems: report.biggestProblems?.map((p) => ({ issue: p.issue, explanation: p.explanation })),
-        locationHotspots: report.locationHotspots?.map((h) => ({ area: h.area, concern: h.concern, recommendation: h.recommendation })),
-        recommendations: report.recommendations?.map((r) => ({ action: r.action, rationale: r.rationale })),
+        biggestProblems: report.biggestProblems?.map((p) => ({
+          issue: p.issue,
+          explanation: p.explanation,
+        })),
+        locationHotspots: report.locationHotspots?.map((h) => ({
+          area: h.area,
+          concern: h.concern,
+          recommendation: h.recommendation,
+        })),
+        recommendations: report.recommendations?.map((r) => ({
+          action: r.action,
+          rationale: r.rationale,
+        })),
       });
       const res = await fetch("/api/translate", {
         method: "POST",
@@ -414,19 +475,24 @@ export default function DashboardPage() {
       if (data.translated) {
         const parsed = JSON.parse(data.translated);
         setTranslatedReport({
-          overallAssessment: parsed.overallAssessment ?? report.overallAssessment,
-          congestionAnalysis: parsed.congestionAnalysis ?? report.congestionAnalysis,
-          resolutionPerformance: parsed.resolutionPerformance ?? report.resolutionPerformance,
+          overallAssessment:
+            parsed.overallAssessment ?? report.overallAssessment,
+          congestionAnalysis:
+            parsed.congestionAnalysis ?? report.congestionAnalysis,
+          resolutionPerformance:
+            parsed.resolutionPerformance ?? report.resolutionPerformance,
           biggestProblems: report.biggestProblems?.map((p, i) => ({
             ...p,
             issue: parsed.biggestProblems?.[i]?.issue ?? p.issue,
-            explanation: parsed.biggestProblems?.[i]?.explanation ?? p.explanation,
+            explanation:
+              parsed.biggestProblems?.[i]?.explanation ?? p.explanation,
           })),
           locationHotspots: report.locationHotspots?.map((h, i) => ({
             ...h,
             area: parsed.locationHotspots?.[i]?.area ?? h.area,
             concern: parsed.locationHotspots?.[i]?.concern ?? h.concern,
-            recommendation: parsed.locationHotspots?.[i]?.recommendation ?? h.recommendation,
+            recommendation:
+              parsed.locationHotspots?.[i]?.recommendation ?? h.recommendation,
           })),
           recommendations: report.recommendations?.map((r, i) => ({
             ...r,
@@ -450,8 +516,12 @@ export default function DashboardPage() {
       setQuery(saved);
 
       // Restore saved coords or geocode the municipality
-      const savedLat = user.user_metadata.dashboard_municipality_lat as number | undefined;
-      const savedLng = user.user_metadata.dashboard_municipality_lng as number | undefined;
+      const savedLat = user.user_metadata.dashboard_municipality_lat as
+        | number
+        | undefined;
+      const savedLng = user.user_metadata.dashboard_municipality_lng as
+        | number
+        | undefined;
       if (savedLat && savedLng) {
         setMunicipalityCoords({ lat: savedLat, lng: savedLng });
       } else {
@@ -533,23 +603,20 @@ export default function DashboardPage() {
     }, 400);
   }, []);
 
-  const handleSelectMunicipality = useCallback(
-    async (place: Place) => {
-      setQuery(place.name);
-      setMunicipality(place.name);
-      setMunicipalityCoords({ lat: place.lat, lng: place.lng });
-      setSuggestions([]);
+  const handleSelectMunicipality = useCallback(async (place: Place) => {
+    setQuery(place.name);
+    setMunicipality(place.name);
+    setMunicipalityCoords({ lat: place.lat, lng: place.lng });
+    setSuggestions([]);
 
-      await supabase.auth.updateUser({
-        data: {
-          dashboard_municipality: place.name,
-          dashboard_municipality_lat: place.lat,
-          dashboard_municipality_lng: place.lng,
-        },
-      });
-    },
-    []
-  );
+    await supabase.auth.updateUser({
+      data: {
+        dashboard_municipality: place.name,
+        dashboard_municipality_lat: place.lat,
+        dashboard_municipality_lng: place.lng,
+      },
+    });
+  }, []);
 
   const handleResolvePin = useCallback(
     async (pinId: string, comment: string, proofPhotoDataUrl: string) => {
@@ -561,7 +628,7 @@ export default function DashboardPage() {
         console.error("Failed to resolve pin:", err);
       }
     },
-    []
+    [],
   );
 
   const handlePinUpdate = useCallback((updated: Pin) => {
@@ -582,7 +649,8 @@ export default function DashboardPage() {
           label: cat?.label ?? item.categoryId,
           count: item.count,
           color: cat?.color ?? "#a6acb3",
-          percent: stats.total > 0 ? Math.round((item.count / stats.total) * 100) : 0,
+          percent:
+            stats.total > 0 ? Math.round((item.count / stats.total) * 100) : 0,
         };
       });
     }
@@ -683,7 +751,7 @@ export default function DashboardPage() {
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
               placeholder="Search operational grid..."
-              className="w-[256px] bg-black border border-[#2a2d30] rounded text-[12px] text-[#e0e6ed] placeholder-[#6b7280] pl-10 pr-4 py-2.5 outline-none focus:border-[#fdd400]/40 transition-colors"
+              className="w-[256px] bg-black border border-[#2a2d30] rounded text-[12px] text-[#e0e6ed] placeholder-[#6b7280] pl-0 r-4 py-2.5 outline-none focus:border-[#fdd400]/40 transition-colors"
             />
             {/* Search suggestions dropdown */}
             {suggestions.length > 0 && (
@@ -694,8 +762,12 @@ export default function DashboardPage() {
                     onClick={() => handleSelectMunicipality(place)}
                     className="w-full text-left px-3 py-2 text-[11px] text-[#a6acb3] hover:bg-[#1a1a1a] hover:text-[#e0e6ed] transition-colors"
                   >
-                    <p className="font-medium text-[#e0e6ed] truncate">{place.name}</p>
-                    <p className="text-[10px] text-[#6b7280] truncate">{place.displayName}</p>
+                    <p className="font-medium text-[#e0e6ed] truncate">
+                      {place.name}
+                    </p>
+                    <p className="text-[10px] text-[#6b7280] truncate">
+                      {place.displayName}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -741,7 +813,11 @@ export default function DashboardPage() {
             />
             <StatCard
               label="Pending"
-              value={stats ? Math.max(0, stats.total - stats.active - stats.resolved) : 42}
+              value={
+                stats
+                  ? Math.max(0, stats.total - stats.active - stats.resolved)
+                  : 42
+              }
               subtitle="In 3-day window"
               color="#fdd400"
             />
@@ -757,7 +833,11 @@ export default function DashboardPage() {
           <div className="col-span-12 bg-[#141414] border border-[#2a2d30] rounded overflow-hidden relative">
             {/* Interactive Map */}
             <div className="absolute inset-0">
-              <DashboardMap pins={pins} center={municipalityCoords} onPinClick={setViewingPin} />
+              <DashboardMap
+                pins={pins}
+                center={municipalityCoords}
+                onPinClick={setViewingPin}
+              />
             </div>
 
             {/* Live Ops Feed overlay */}
@@ -852,7 +932,11 @@ export default function DashboardPage() {
                     } ${translatingReport ? "opacity-60 cursor-wait" : ""}`}
                   >
                     <FaLanguage size={12} />
-                    {translatingReport ? "Translating..." : translatedReport ? "English" : "Filipino"}
+                    {translatingReport
+                      ? "Translating..."
+                      : translatedReport
+                        ? "English"
+                        : "Filipino"}
                   </button>
                 )}
               </div>
@@ -860,7 +944,9 @@ export default function DashboardPage() {
                 {reportLoading ? (
                   <div className="flex flex-col items-center justify-center h-full gap-2">
                     <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#fdd400] border-t-transparent" />
-                    <span className="text-[10px] text-[#a6acb3]">Analyzing reports...</span>
+                    <span className="text-[10px] text-[#a6acb3]">
+                      Analyzing reports...
+                    </span>
                   </div>
                 ) : report ? (
                   <div className="flex flex-col gap-4">
@@ -875,71 +961,78 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Biggest Problems */}
-                    {displayReport && displayReport.biggestProblems.length > 0 && (
-                      <div>
-                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#ee7d77] block mb-2">
-                          Biggest Problems
-                        </span>
-                        <div className="flex flex-col gap-2">
-                          {displayReport.biggestProblems.map((problem, i) => (
-                            <div
-                              key={i}
-                              className={`pl-3 py-2 rounded-r border-l-2 ${
-                                problem.severity === "critical"
-                                  ? "border-[#ee7d77] bg-[#ee7d77]/5"
-                                  : problem.severity === "warning"
-                                    ? "border-[#fdd400] bg-[#fdd400]/5"
-                                    : "border-[#b0c6ff] bg-[#b0c6ff]/5"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-0.5">
-                                <span className="text-[10px] font-bold text-[#e0e6ed]">
-                                  {problem.issue}
-                                </span>
-                                <span
-                                  className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                                    problem.severity === "critical"
-                                      ? "bg-[#ee7d77]/15 text-[#ee7d77]"
-                                      : problem.severity === "warning"
-                                        ? "bg-[#fdd400]/15 text-[#fdd400]"
-                                        : "bg-[#b0c6ff]/15 text-[#b0c6ff]"
-                                  }`}
-                                >
-                                  {problem.severity}
-                                </span>
+                    {displayReport &&
+                      displayReport.biggestProblems.length > 0 && (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#ee7d77] block mb-2">
+                            Biggest Problems
+                          </span>
+                          <div className="flex flex-col gap-2">
+                            {displayReport.biggestProblems.map((problem, i) => (
+                              <div
+                                key={i}
+                                className={`pl-3 py-2 rounded-r border-l-2 ${
+                                  problem.severity === "critical"
+                                    ? "border-[#ee7d77] bg-[#ee7d77]/5"
+                                    : problem.severity === "warning"
+                                      ? "border-[#fdd400] bg-[#fdd400]/5"
+                                      : "border-[#b0c6ff] bg-[#b0c6ff]/5"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="text-[10px] font-bold text-[#e0e6ed]">
+                                    {problem.issue}
+                                  </span>
+                                  <span
+                                    className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                      problem.severity === "critical"
+                                        ? "bg-[#ee7d77]/15 text-[#ee7d77]"
+                                        : problem.severity === "warning"
+                                          ? "bg-[#fdd400]/15 text-[#fdd400]"
+                                          : "bg-[#b0c6ff]/15 text-[#b0c6ff]"
+                                    }`}
+                                  >
+                                    {problem.severity}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] leading-[15px] text-[#a6acb3]">
+                                  {problem.explanation}
+                                </p>
                               </div>
-                              <p className="text-[10px] leading-[15px] text-[#a6acb3]">
-                                {problem.explanation}
-                              </p>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Location Hotspots */}
-                    {displayReport && displayReport.locationHotspots.length > 0 && (
-                      <div>
-                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
-                          Location Hotspots
-                        </span>
-                        <div className="flex flex-col gap-2">
-                          {displayReport.locationHotspots.map((hotspot, i) => (
-                            <div key={i} className="pl-3 border-l-2 border-[#fdd400]/30">
-                              <span className="text-[10px] font-bold text-[#e0e6ed] block">
-                                {hotspot.area}
-                              </span>
-                              <p className="text-[10px] leading-[15px] text-[#a6acb3]">
-                                {hotspot.concern}
-                              </p>
-                              <p className="text-[10px] leading-[15px] text-[#fdd400]/60 italic mt-0.5">
-                                {hotspot.recommendation}
-                              </p>
-                            </div>
-                          ))}
+                    {displayReport &&
+                      displayReport.locationHotspots.length > 0 && (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
+                            Location Hotspots
+                          </span>
+                          <div className="flex flex-col gap-2">
+                            {displayReport.locationHotspots.map(
+                              (hotspot, i) => (
+                                <div
+                                  key={i}
+                                  className="pl-3 border-l-2 border-[#fdd400]/30"
+                                >
+                                  <span className="text-[10px] font-bold text-[#e0e6ed] block">
+                                    {hotspot.area}
+                                  </span>
+                                  <p className="text-[10px] leading-[15px] text-[#a6acb3]">
+                                    {hotspot.concern}
+                                  </p>
+                                  <p className="text-[10px] leading-[15px] text-[#fdd400]/60 italic mt-0.5">
+                                    {hotspot.recommendation}
+                                  </p>
+                                </div>
+                              ),
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Congestion Analysis */}
                     {displayReport?.congestionAnalysis && (
@@ -966,30 +1059,31 @@ export default function DashboardPage() {
                     )}
 
                     {/* Recommendations */}
-                    {displayReport && displayReport.recommendations.length > 0 && (
-                      <div>
-                        <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
-                          Recommendations
-                        </span>
-                        <div className="flex flex-col gap-1.5">
-                          {displayReport.recommendations.map((rec, i) => (
-                            <div key={i} className="flex gap-2 pl-1">
-                              <span className="shrink-0 flex items-center justify-center h-4 w-4 rounded-full bg-[#fdd400]/10 text-[8px] font-bold text-[#fdd400] mt-0.5">
-                                {rec.priority}
-                              </span>
-                              <div>
-                                <span className="text-[10px] font-bold text-[#e0e6ed] block">
-                                  {rec.action}
+                    {displayReport &&
+                      displayReport.recommendations.length > 0 && (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-[1px] text-[#fdd400] block mb-2">
+                            Recommendations
+                          </span>
+                          <div className="flex flex-col gap-1.5">
+                            {displayReport.recommendations.map((rec, i) => (
+                              <div key={i} className="flex gap-2 pl-1">
+                                <span className="shrink-0 flex items-center justify-center h-4 w-4 rounded-full bg-[#fdd400]/10 text-[8px] font-bold text-[#fdd400] mt-0.5">
+                                  {rec.priority}
                                 </span>
-                                <p className="text-[10px] leading-[14px] text-[#a6acb3]">
-                                  {rec.rationale}
-                                </p>
+                                <div>
+                                  <span className="text-[10px] font-bold text-[#e0e6ed] block">
+                                    {rec.action}
+                                  </span>
+                                  <p className="text-[10px] leading-[14px] text-[#a6acb3]">
+                                    {rec.rationale}
+                                  </p>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
                   </div>
                 ) : (
                   /* Placeholder when no report */
@@ -1019,9 +1113,10 @@ export default function DashboardPage() {
                 AI Advisory:{" "}
               </span>
               <span className="text-[#a6acb3]/50">
-                The data visualizations and priority rankings above are generated
-                with the assistance of AI models. Institutional verification is
-                recommended for all critical emergency responses.
+                The data visualizations and priority rankings above are
+                generated with the assistance of AI models. Institutional
+                verification is recommended for all critical emergency
+                responses.
               </span>
             </p>
           </div>
