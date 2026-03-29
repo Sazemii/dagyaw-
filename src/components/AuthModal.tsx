@@ -1,3 +1,16 @@
+/**
+ * ==================================================================================
+ * Team Smart Dito sa Globe (SDG)
+ * BLUE HACKS 2026: GENERATIVE AI DISCLOSURE
+ * * This code was created with the assistance of AI tools such as:
+ * - Claude 4.6 Opus (Anthropic)
+ * - GPT 5.3 - Codex (OpenAI)
+ * - Claude Gemini 3.1 Pro (Google)
+ * * Purpose: This AI was utilized for code generation (logic and functions),
+ * brainstorming, code refinement (debugging), and performance optimization.
+ * ==================================================================================
+ */
+
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -209,8 +222,13 @@ export default function AuthModal({ onClose }: AuthModalProps) {
           {/* Success message */}
           {success && (
             <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-green-500/30 bg-green-950/30 p-3">
-              <FaCheckCircle className="mt-0.5 shrink-0 text-green-400" size={14} />
-              <p className="text-xs leading-relaxed text-green-300">{success}</p>
+              <FaCheckCircle
+                className="mt-0.5 shrink-0 text-green-400"
+                size={14}
+              />
+              <p className="text-xs leading-relaxed text-green-300">
+                {success}
+              </p>
             </div>
           )}
 
@@ -240,16 +258,24 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password"
                   className={`${inputCls} pr-10`}
-                  autoComplete={tab === "login" ? "current-password" : "new-password"}
+                  autoComplete={
+                    tab === "login" ? "current-password" : "new-password"
+                  }
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className={`absolute right-3 top-1/2 -translate-y-1/2 ${
-                    isDark ? "text-neutral-500 hover:text-neutral-300" : "text-neutral-400 hover:text-neutral-600"
+                    isDark
+                      ? "text-neutral-500 hover:text-neutral-300"
+                      : "text-neutral-400 hover:text-neutral-600"
                   }`}
                 >
-                  {showPassword ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
+                  {showPassword ? (
+                    <FaEyeSlash size={14} />
+                  ) : (
+                    <FaEye size={14} />
+                  )}
                 </button>
               </div>
 
@@ -294,7 +320,12 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                       }`}
                     >
                       {isCommunityWatcher && (
-                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                        >
                           <path
                             d="M2.5 6L5 8.5L9.5 3.5"
                             stroke="currentColor"
@@ -347,9 +378,7 @@ export default function AuthModal({ onClose }: AuthModalProps) {
               )}
 
               {/* Error */}
-              {error && (
-                <p className="text-xs text-red-400">{error}</p>
-              )}
+              {error && <p className="text-xs text-red-400">{error}</p>}
 
               {/* Submit */}
               <button

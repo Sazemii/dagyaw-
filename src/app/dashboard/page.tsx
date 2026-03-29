@@ -1,3 +1,16 @@
+/**
+ * ==================================================================================
+ * Team Smart Dito sa Globe (SDG)
+ * BLUE HACKS 2026: GENERATIVE AI DISCLOSURE
+ * * This code was created with the assistance of AI tools such as:
+ * - Claude 4.6 Opus (Anthropic)
+ * - GPT 5.3 - Codex (OpenAI)
+ * - Claude Gemini 3.1 Pro (Google)
+ * * Purpose: This AI was utilized for code generation (logic and functions),
+ * brainstorming, code refinement (debugging), and performance optimization.
+ * ==================================================================================
+ */
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -14,7 +27,14 @@ import type { Pin } from "../../components/MapView";
 import { getCategoryById } from "../../components/categories";
 import CategoryIcon from "../../components/CategoryIcon";
 import PinDetailModal from "../../components/PinDetailModal";
-import { FaSearch, FaBell, FaCircle, FaLanguage, FaExpand, FaTimes } from "react-icons/fa";
+import {
+  FaSearch,
+  FaBell,
+  FaCircle,
+  FaLanguage,
+  FaExpand,
+  FaTimes,
+} from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi2";
 import type { MunicipalityReport } from "../../lib/insights/types";
 import Map, {
@@ -136,7 +156,11 @@ function CategoryBar({
       <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${percent}%`, backgroundColor: color, opacity: 0.85 }}
+          style={{
+            width: `${percent}%`,
+            backgroundColor: color,
+            opacity: 0.85,
+          }}
         />
       </div>
     </div>
@@ -529,7 +553,9 @@ export default function DashboardPage() {
             .then((res) => {
               if (!res.ok) {
                 return res.json().then((d) => {
-                  throw new Error(d.error || d.details || `API error ${res.status}`);
+                  throw new Error(
+                    d.error || d.details || `API error ${res.status}`,
+                  );
                 });
               }
               return res.json();
@@ -902,12 +928,15 @@ export default function DashboardPage() {
                               {pin.description || "No description provided"}
                             </p>
                             <span className="text-[9px] text-[#a6acb3]/50 mt-1 block">
-                              {new Date(pin.createdAt).toLocaleDateString("en-PH", {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(pin.createdAt).toLocaleDateString(
+                                "en-PH",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
                             </span>
                           </div>
                         </button>
@@ -1491,9 +1520,7 @@ export default function DashboardPage() {
                     <div
                       key={i}
                       className={`pl-4 py-2 ${
-                        insight.bordered
-                          ? "border-l-2 border-[#fdd400]/40"
-                          : ""
+                        insight.bordered ? "border-l-2 border-[#fdd400]/40" : ""
                       }`}
                     >
                       <p className="text-[14px] leading-[22px] text-[#e0e6ed]">

@@ -1,3 +1,16 @@
+/**
+ * ==================================================================================
+ * Team Smart Dito sa Globe (SDG)
+ * BLUE HACKS 2026: GENERATIVE AI DISCLOSURE
+ * * This code was created with the assistance of AI tools such as:
+ * - Claude 4.6 Opus (Anthropic)
+ * - GPT 5.3 - Codex (OpenAI)
+ * - Claude Gemini 3.1 Pro (Google)
+ * * Purpose: This AI was utilized for code generation (logic and functions),
+ * brainstorming, code refinement (debugging), and performance optimization.
+ * ==================================================================================
+ */
+
 "use client";
 
 import {
@@ -61,7 +74,10 @@ export default function InsightPanel({ insight, onClose }: InsightPanelProps) {
   return (
     <div className="fixed inset-0 z-[2000] flex items-end justify-center sm:items-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       {/* Panel */}
       <div
@@ -77,10 +93,7 @@ export default function InsightPanel({ insight, onClose }: InsightPanelProps) {
         }}
       >
         {/* Severity accent strip */}
-        <div
-          className="h-1 w-full"
-          style={{ background: accentColor }}
-        />
+        <div className="h-1 w-full" style={{ background: accentColor }} />
 
         {/* Header */}
         <div className="flex items-start justify-between p-4 pb-3">
@@ -94,15 +107,21 @@ export default function InsightPanel({ insight, onClose }: InsightPanelProps) {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${isDark ? config.badgeDark : config.badgeLight}`}>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${isDark ? config.badgeDark : config.badgeLight}`}
+                >
                   <SeverityIcon size={8} className="mr-1 inline" />
                   {config.label}
                 </span>
-                <span className={`text-[10px] ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
+                <span
+                  className={`text-[10px] ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+                >
                   Priority: {insight.priorityScore}/100
                 </span>
               </div>
-              <h3 className={`mt-1 text-sm font-bold leading-tight ${isDark ? "text-neutral-100" : "text-neutral-900"}`}>
+              <h3
+                className={`mt-1 text-sm font-bold leading-tight ${isDark ? "text-neutral-100" : "text-neutral-900"}`}
+              >
                 {insight.title}
               </h3>
             </div>
@@ -120,14 +139,18 @@ export default function InsightPanel({ insight, onClose }: InsightPanelProps) {
         </div>
 
         {/* Body */}
-        <div className={`px-4 pb-3 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}>
+        <div
+          className={`px-4 pb-3 ${isDark ? "text-neutral-400" : "text-neutral-600"}`}
+        >
           <p className="text-xs leading-relaxed">{insight.body}</p>
         </div>
 
         {/* Risk factors */}
         {insight.riskFactors.length > 0 && (
           <div className="px-4 pb-3">
-            <p className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
+            <p
+              className={`mb-1.5 text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+            >
               Risk Factors
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -148,24 +171,36 @@ export default function InsightPanel({ insight, onClose }: InsightPanelProps) {
         )}
 
         {/* Recommendation + Citizen Tip */}
-        <div className={`mx-4 mb-4 rounded-xl border p-3 ${
-          isDark
-            ? "border-white/[0.06] bg-white/[0.03]"
-            : "border-black/[0.05] bg-black/[0.02]"
-        }`}>
+        <div
+          className={`mx-4 mb-4 rounded-xl border p-3 ${
+            isDark
+              ? "border-white/[0.06] bg-white/[0.03]"
+              : "border-black/[0.05] bg-black/[0.02]"
+          }`}
+        >
           <div className="mb-2">
-            <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-[#f5c542]" : "text-[#b8860b]"}`}>
+            <p
+              className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-[#f5c542]" : "text-[#b8860b]"}`}
+            >
               LGU Recommendation
             </p>
-            <p className={`mt-0.5 text-xs leading-relaxed ${isDark ? "text-neutral-300" : "text-neutral-600"}`}>
+            <p
+              className={`mt-0.5 text-xs leading-relaxed ${isDark ? "text-neutral-300" : "text-neutral-600"}`}
+            >
               {insight.recommendation}
             </p>
           </div>
-          <div className={`border-t pt-2 ${isDark ? "border-white/[0.06]" : "border-black/[0.05]"}`}>
-            <p className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
+          <div
+            className={`border-t pt-2 ${isDark ? "border-white/[0.06]" : "border-black/[0.05]"}`}
+          >
+            <p
+              className={`text-[10px] font-semibold uppercase tracking-wider ${isDark ? "text-emerald-400" : "text-emerald-600"}`}
+            >
               Citizen Tip
             </p>
-            <p className={`mt-0.5 text-xs leading-relaxed ${isDark ? "text-neutral-300" : "text-neutral-600"}`}>
+            <p
+              className={`mt-0.5 text-xs leading-relaxed ${isDark ? "text-neutral-300" : "text-neutral-600"}`}
+            >
               {insight.citizenTip}
             </p>
           </div>

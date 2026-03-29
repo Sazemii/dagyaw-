@@ -1,3 +1,16 @@
+/**
+ * ==================================================================================
+ * Team Smart Dito sa Globe (SDG)
+ * BLUE HACKS 2026: GENERATIVE AI DISCLOSURE
+ * * This code was created with the assistance of AI tools such as:
+ * - Claude 4.6 Opus (Anthropic)
+ * - GPT 5.3 - Codex (OpenAI)
+ * - Claude Gemini 3.1 Pro (Google)
+ * * Purpose: This AI was utilized for code generation (logic and functions),
+ * brainstorming, code refinement (debugging), and performance optimization.
+ * ==================================================================================
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -25,13 +38,7 @@ function formatTimeAgo(dateStr: string): string {
 }
 
 /** SVG donut ring for resolution rate */
-function ResolutionRing({
-  rate,
-  isDark,
-}: {
-  rate: number;
-  isDark: boolean;
-}) {
+function ResolutionRing({ rate, isDark }: { rate: number; isDark: boolean }) {
   const radius = 38;
   const stroke = 6;
   const circumference = 2 * Math.PI * radius;
@@ -85,7 +92,10 @@ function ResolutionRing({
   );
 }
 
-export default function CityStats({ municipalityName, onClose }: CityStatsProps) {
+export default function CityStats({
+  municipalityName,
+  onClose,
+}: CityStatsProps) {
   const theme = useTheme();
   const isDark = theme === "dark";
   const [stats, setStats] = useState<CityDetailedStats | null>(null);
@@ -108,15 +118,23 @@ export default function CityStats({ municipalityName, onClose }: CityStatsProps)
       <div className={`h-7 w-40 animate-pulse rounded ${skeletonBg}`} />
       <div className={`h-4 w-28 animate-pulse rounded ${skeletonBgDim}`} />
       <div className="mt-2 flex items-center gap-5">
-        <div className={`h-[100px] w-[100px] animate-pulse rounded-full ${skeletonBgDim}`} />
+        <div
+          className={`h-[100px] w-[100px] animate-pulse rounded-full ${skeletonBgDim}`}
+        />
         <div className="flex flex-col gap-3">
-          <div className={`h-10 w-20 animate-pulse rounded-lg ${skeletonBgDim}`} />
-          <div className={`h-10 w-20 animate-pulse rounded-lg ${skeletonBgDim}`} />
+          <div
+            className={`h-10 w-20 animate-pulse rounded-lg ${skeletonBgDim}`}
+          />
+          <div
+            className={`h-10 w-20 animate-pulse rounded-lg ${skeletonBgDim}`}
+          />
         </div>
       </div>
     </div>
   ) : !stats ? (
-    <p className={`stat-reveal text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}>
+    <p
+      className={`stat-reveal text-sm ${isDark ? "text-neutral-500" : "text-neutral-400"}`}
+    >
       Failed to load stats.
     </p>
   ) : (
@@ -202,10 +220,14 @@ export default function CityStats({ municipalityName, onClose }: CityStatsProps)
           }`}
           style={{ animationDelay: "80ms" }}
         >
-          <p className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}>
+          <p
+            className={`text-sm ${isDark ? "text-neutral-400" : "text-neutral-500"}`}
+          >
             No reports yet
           </p>
-          <p className={`mt-0.5 text-xs ${isDark ? "text-neutral-600" : "text-neutral-400"}`}>
+          <p
+            className={`mt-0.5 text-xs ${isDark ? "text-neutral-600" : "text-neutral-400"}`}
+          >
             Be the first to report an issue
           </p>
         </div>
@@ -213,10 +235,7 @@ export default function CityStats({ municipalityName, onClose }: CityStatsProps)
 
       {/* ---- Total bar ---- */}
       {stats.total > 0 && (
-        <div
-          className="stat-reveal"
-          style={{ animationDelay: "200ms" }}
-        >
+        <div className="stat-reveal" style={{ animationDelay: "200ms" }}>
           <div
             className={`flex items-center justify-between rounded-lg px-3.5 py-2 ${
               isDark ? "bg-neutral-800/60" : "bg-neutral-100"
@@ -278,7 +297,11 @@ export default function CityStats({ municipalityName, onClose }: CityStatsProps)
                       }}
                     >
                       {cat && (
-                        <CategoryIcon iconName={cat.icon} size={11} color={cat.color} />
+                        <CategoryIcon
+                          iconName={cat.icon}
+                          size={11}
+                          color={cat.color}
+                        />
                       )}
                     </div>
                     <span

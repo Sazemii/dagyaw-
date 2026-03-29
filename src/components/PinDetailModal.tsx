@@ -1,3 +1,16 @@
+/**
+ * ==================================================================================
+ * Team Smart Dito sa Globe (SDG)
+ * BLUE HACKS 2026: GENERATIVE AI DISCLOSURE
+ * * This code was created with the assistance of AI tools such as:
+ * - Claude 4.6 Opus (Anthropic)
+ * - GPT 5.3 - Codex (OpenAI)
+ * - Claude Gemini 3.1 Pro (Google)
+ * * Purpose: This AI was utilized for code generation (logic and functions),
+ * brainstorming, code refinement (debugging), and performance optimization.
+ * ==================================================================================
+ */
+
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -38,7 +51,11 @@ const MAX_COMMENT_LENGTH = 200;
 interface PinDetailModalProps {
   pin: Pin;
   onClose: () => void;
-  onResolve: (pinId: string, comment: string, proofPhotoDataUrl: string) => void;
+  onResolve: (
+    pinId: string,
+    comment: string,
+    proofPhotoDataUrl: string,
+  ) => void;
   onPinUpdate?: (updated: Pin) => void;
 }
 
@@ -72,7 +89,9 @@ export default function PinDetailModal({
   const [commentSubmitting, setCommentSubmitting] = useState(false);
 
   // Watcher identity for pending resolution
-  const [pendingWatcherName, setPendingWatcherName] = useState<string | null>(null);
+  const [pendingWatcherName, setPendingWatcherName] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (isPending && user) {
@@ -95,13 +114,16 @@ export default function PinDetailModal({
     }
   }, [isPending, pin.pendingResolvedBy]);
 
-  const handlePhotoCapture = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setProofPhoto(reader.result as string);
-    reader.readAsDataURL(file);
-  }, []);
+  const handlePhotoCapture = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onloadend = () => setProofPhoto(reader.result as string);
+      reader.readAsDataURL(file);
+    },
+    [],
+  );
 
   const handleWatcherResolve = useCallback(async () => {
     if (!proofPhoto || !user) return;
@@ -123,7 +145,11 @@ export default function PinDetailModal({
     if (!proofPhoto || !user) return;
     setSubmitting(true);
     try {
-      const updated = await requestCommunityResolution(pin.id, proofPhoto, user.id);
+      const updated = await requestCommunityResolution(
+        pin.id,
+        proofPhoto,
+        user.id,
+      );
       onPinUpdate?.(updated);
       setShowResolveForm(false);
       setProofPhoto(null);
@@ -163,7 +189,7 @@ export default function PinDetailModal({
         setVotingLoading(false);
       }
     },
-    [user, pin.id]
+    [user, pin.id],
   );
 
   const handleSubmitComment = useCallback(async () => {
@@ -176,7 +202,9 @@ export default function PinDetailModal({
         userId: user.id,
         body: commentText.trim(),
         isWatcher: isCommunityWatcher,
-        watcherDisplay: isCommunityWatcher ? (userEmail || "Community Watcher") : undefined,
+        watcherDisplay: isCommunityWatcher
+          ? userEmail || "Community Watcher"
+          : undefined,
       });
       setComments((prev) => [...prev, newComment]);
       setCommentText("");
@@ -199,14 +227,14 @@ export default function PinDetailModal({
           body: replyText.trim(),
           parentId,
           isWatcher: isCommunityWatcher,
-          watcherDisplay: isCommunityWatcher ? (userEmail || "Community Watcher") : undefined,
+          watcherDisplay: isCommunityWatcher
+            ? userEmail || "Community Watcher"
+            : undefined,
         });
         setComments((prev) =>
           prev.map((c) =>
-            c.id === parentId
-              ? { ...c, replies: [...c.replies, newReply] }
-              : c
-          )
+            c.id === parentId ? { ...c, replies: [...c.replies, newReply] } : c,
+          ),
         );
         setReplyText("");
         setReplyingTo(null);
@@ -216,7 +244,7 @@ export default function PinDetailModal({
         setCommentSubmitting(false);
       }
     },
-    [user, replyText, pin.id, isCommunityWatcher]
+    [user, replyText, pin.id, isCommunityWatcher],
   );
 
   if (!category) return null;
@@ -224,16 +252,21 @@ export default function PinDetailModal({
   const timeAgo = getTimeAgo(pin.createdAt);
 
   const pendingDeadline = pin.pendingResolvedAt
-    ? new Date(new Date(pin.pendingResolvedAt).getTime() + 3 * 24 * 60 * 60 * 1000)
+    ? new Date(
+        new Date(pin.pendingResolvedAt).getTime() + 3 * 24 * 60 * 60 * 1000,
+      )
     : null;
-  const timeRemaining = pendingDeadline ? getTimeRemaining(pendingDeadline) : null;
+  const timeRemaining = pendingDeadline
+    ? getTimeRemaining(pendingDeadline)
+    : null;
 
   const totalVotes = votes ? votes.up + votes.down : 0;
-  const upPercent = totalVotes > 0 ? Math.round((votes!.up / totalVotes) * 100) : 0;
+  const upPercent =
+    totalVotes > 0 ? Math.round((votes!.up / totalVotes) * 100) : 0;
 
   const totalCommentCount = comments.reduce(
     (sum, c) => sum + 1 + c.replies.length,
-    0
+    0,
   );
 
   return (
@@ -377,58 +410,60 @@ export default function PinDetailModal({
           </p>
 
           {/* Community resolution request banner (for watchers to approve) */}
-          {isActive && pin.communityResolveRequested && pin.resolvedPhotoUrl && (
-            <div
-              className={`mt-4 rounded-xl border p-3 ${
-                isDark
-                  ? "border-blue-900/50 bg-blue-950/30"
-                  : "border-blue-200 bg-blue-50"
-              }`}
-            >
-              <div className="mb-2 flex items-center gap-2">
-                <FaHandsHelping
-                  size={13}
-                  className={isDark ? "text-blue-400" : "text-blue-600"}
+          {isActive &&
+            pin.communityResolveRequested &&
+            pin.resolvedPhotoUrl && (
+              <div
+                className={`mt-4 rounded-xl border p-3 ${
+                  isDark
+                    ? "border-blue-900/50 bg-blue-950/30"
+                    : "border-blue-200 bg-blue-50"
+                }`}
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <FaHandsHelping
+                    size={13}
+                    className={isDark ? "text-blue-400" : "text-blue-600"}
+                  />
+                  <p
+                    className={`text-xs font-semibold ${
+                      isDark ? "text-blue-400" : "text-blue-700"
+                    }`}
+                  >
+                    A community member submitted a fix
+                  </p>
+                </div>
+                <img
+                  src={pin.resolvedPhotoUrl}
+                  alt="Resolution proof"
+                  className="mb-3 w-full rounded-lg object-cover"
+                  style={{ maxHeight: "180px" }}
                 />
-                <p
-                  className={`text-xs font-semibold ${
-                    isDark ? "text-blue-400" : "text-blue-700"
-                  }`}
-                >
-                  A community member submitted a fix
-                </p>
+                {isCommunityWatcher && (
+                  <button
+                    onClick={handleApprove}
+                    disabled={submitting}
+                    className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-50 ${
+                      isDark
+                        ? "bg-[#f5c542] text-black hover:bg-[#e0b23a]"
+                        : "bg-[#b8860b] text-white hover:bg-[#a0750a]"
+                    }`}
+                  >
+                    <FaShieldAlt size={12} />
+                    {submitting ? "Approving..." : "Approve & Start Voting"}
+                  </button>
+                )}
+                {!isCommunityWatcher && (
+                  <p
+                    className={`text-xs text-center ${
+                      isDark ? "text-blue-400/70" : "text-blue-600/70"
+                    }`}
+                  >
+                    Awaiting Community Watcher approval
+                  </p>
+                )}
               </div>
-              <img
-                src={pin.resolvedPhotoUrl}
-                alt="Resolution proof"
-                className="mb-3 w-full rounded-lg object-cover"
-                style={{ maxHeight: "180px" }}
-              />
-              {isCommunityWatcher && (
-                <button
-                  onClick={handleApprove}
-                  disabled={submitting}
-                  className={`flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-50 ${
-                    isDark
-                      ? "bg-[#f5c542] text-black hover:bg-[#e0b23a]"
-                      : "bg-[#b8860b] text-white hover:bg-[#a0750a]"
-                  }`}
-                >
-                  <FaShieldAlt size={12} />
-                  {submitting ? "Approving..." : "Approve & Start Voting"}
-                </button>
-              )}
-              {!isCommunityWatcher && (
-                <p
-                  className={`text-xs text-center ${
-                    isDark ? "text-blue-400/70" : "text-blue-600/70"
-                  }`}
-                >
-                  Awaiting Community Watcher approval
-                </p>
-              )}
-            </div>
-          )}
+            )}
 
           {/* Pending resolution: voting section */}
           {isPending && (
@@ -477,9 +512,7 @@ export default function PinDetailModal({
                     }`}
                   >
                     Moved to voting by{" "}
-                    <span className="font-semibold">
-                      {pendingWatcherName}
-                    </span>
+                    <span className="font-semibold">{pendingWatcherName}</span>
                   </p>
                 </div>
               )}
@@ -506,7 +539,9 @@ export default function PinDetailModal({
               {votes && totalVotes > 0 && (
                 <div className="mb-3">
                   <div className="mb-1 flex justify-between text-[10px] font-medium">
-                    <span className={isDark ? "text-green-400" : "text-green-600"}>
+                    <span
+                      className={isDark ? "text-green-400" : "text-green-600"}
+                    >
                       {votes.up} upvote{votes.up !== 1 ? "s" : ""}
                     </span>
                     <span className={isDark ? "text-red-400" : "text-red-600"}>
@@ -528,7 +563,8 @@ export default function PinDetailModal({
                       isDark ? "text-neutral-500" : "text-neutral-400"
                     }`}
                   >
-                    {upPercent}% approval · {totalVotes} total vote{totalVotes !== 1 ? "s" : ""}
+                    {upPercent}% approval · {totalVotes} total vote
+                    {totalVotes !== 1 ? "s" : ""}
                   </p>
                 </div>
               )}
@@ -614,35 +650,37 @@ export default function PinDetailModal({
           )}
 
           {/* Action buttons for active pins */}
-          {isActive && !pin.communityResolveRequested && user && !showResolveForm && (
-            <div className="mt-4 flex gap-2">
-              {isCommunityWatcher ? (
-                <button
-                  onClick={() => setShowResolveForm(true)}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${
-                    isDark
-                      ? "bg-[#f5c542] text-black hover:bg-[#e0b23a]"
-                      : "bg-[#b8860b] text-white hover:bg-[#a0750a]"
-                  }`}
-                >
-                  <FaShieldAlt size={12} />
-                  I Fixed This
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowResolveForm(true)}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${
-                    isDark
-                      ? "border border-[#f5c542]/30 bg-[#f5c542]/10 text-[#f5c542] hover:bg-[#f5c542]/20"
-                      : "border border-[#b8860b]/30 bg-[#b8860b]/10 text-[#b8860b] hover:bg-[#b8860b]/20"
-                  }`}
-                >
-                  <FaHandsHelping size={12} />
-                  Request Resolution
-                </button>
-              )}
-            </div>
-          )}
+          {isActive &&
+            !pin.communityResolveRequested &&
+            user &&
+            !showResolveForm && (
+              <div className="mt-4 flex gap-2">
+                {isCommunityWatcher ? (
+                  <button
+                    onClick={() => setShowResolveForm(true)}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                      isDark
+                        ? "bg-[#f5c542] text-black hover:bg-[#e0b23a]"
+                        : "bg-[#b8860b] text-white hover:bg-[#a0750a]"
+                    }`}
+                  >
+                    <FaShieldAlt size={12} />I Fixed This
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowResolveForm(true)}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                      isDark
+                        ? "border border-[#f5c542]/30 bg-[#f5c542]/10 text-[#f5c542] hover:bg-[#f5c542]/20"
+                        : "border border-[#b8860b]/30 bg-[#b8860b]/10 text-[#b8860b] hover:bg-[#b8860b]/20"
+                    }`}
+                  >
+                    <FaHandsHelping size={12} />
+                    Request Resolution
+                  </button>
+                )}
+              </div>
+            )}
 
           {/* Proof photo upload form */}
           {showResolveForm && (
@@ -716,7 +754,11 @@ export default function PinDetailModal({
                   Cancel
                 </button>
                 <button
-                  onClick={isCommunityWatcher ? handleWatcherResolve : handleCommunityResolve}
+                  onClick={
+                    isCommunityWatcher
+                      ? handleWatcherResolve
+                      : handleCommunityResolve
+                  }
                   disabled={!proofPhoto || submitting}
                   className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-40 ${
                     isDark
@@ -775,7 +817,9 @@ export default function PinDetailModal({
                   <textarea
                     value={commentText}
                     onChange={(e) =>
-                      setCommentText(e.target.value.slice(0, MAX_COMMENT_LENGTH))
+                      setCommentText(
+                        e.target.value.slice(0, MAX_COMMENT_LENGTH),
+                      )
                     }
                     placeholder="Write a comment..."
                     rows={2}
@@ -899,13 +943,11 @@ function CommentItem({
 }) {
   const isReplyOpen = replyingTo === comment.id;
   const displayName = comment.isWatcher
-    ? comment.watcherDisplay ?? "Community Watcher"
+    ? (comment.watcherDisplay ?? "Community Watcher")
     : "Anonymous";
 
   return (
-    <div
-      className={depth > 0 ? "ml-6" : ""}
-    >
+    <div className={depth > 0 ? "ml-6" : ""}>
       <div
         className={`rounded-xl p-3 ${
           isDark ? "bg-neutral-800/50" : "bg-neutral-50"
@@ -953,9 +995,7 @@ function CommentItem({
         {/* Reply button — only for top-level comments */}
         {user && depth === 0 && (
           <button
-            onClick={() =>
-              onSetReplyingTo(isReplyOpen ? null : comment.id)
-            }
+            onClick={() => onSetReplyingTo(isReplyOpen ? null : comment.id)}
             className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium transition-colors ${
               isDark
                 ? "text-neutral-500 hover:text-neutral-300"

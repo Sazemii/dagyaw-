@@ -1,3 +1,16 @@
+/**
+ * ==================================================================================
+ * Team Smart Dito sa Globe (SDG)
+ * BLUE HACKS 2026: GENERATIVE AI DISCLOSURE
+ * * This code was created with the assistance of AI tools such as:
+ * - Claude 4.6 Opus (Anthropic)
+ * - GPT 5.3 - Codex (OpenAI)
+ * - Claude Gemini 3.1 Pro (Google)
+ * * Purpose: This AI was utilized for code generation (logic and functions),
+ * brainstorming, code refinement (debugging), and performance optimization.
+ * ==================================================================================
+ */
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -11,7 +24,9 @@ import Map, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getCategoryById } from "./categories";
 import CategoryIcon from "./CategoryIcon";
-import UserLocationTracker, { type LocationStatus } from "./UserLocationTracker";
+import UserLocationTracker, {
+  type LocationStatus,
+} from "./UserLocationTracker";
 import { useTheme } from "./ThemeContext";
 import { floodZonesToGeoJSON, type FloodWasteAlert } from "../data/flood-zones";
 import type { Insight } from "../lib/insights/types";
@@ -61,7 +76,13 @@ const CARTO_DARK_STYLE =
 const CARTO_LIGHT_STYLE =
   "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
-function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void }) {
+function PinMarker({
+  pin,
+  onClick,
+}: {
+  pin: Pin;
+  onClick?: (pin: Pin) => void;
+}) {
   const category = getCategoryById(pin.categoryId);
   const theme = useTheme();
   if (!category) return null;
@@ -79,8 +100,12 @@ function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void })
   const circleFill = isResolved
     ? "#d1fae5"
     : isPending
-      ? (isDark ? "#1a1500" : "#fffbeb")
-      : (isDark ? "#1a1a1a" : "#ffffff");
+      ? isDark
+        ? "#1a1500"
+        : "#fffbeb"
+      : isDark
+        ? "#1a1a1a"
+        : "#ffffff";
 
   const opacity = isResolved ? 0.5 : 1;
 
@@ -89,7 +114,10 @@ function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void })
       <div
         className="pin-marker"
         style={{ opacity }}
-        onClick={(e) => { e.stopPropagation(); onClick?.(pin); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick?.(pin);
+        }}
       >
         <svg
           width="40"
@@ -130,7 +158,13 @@ function PinMarker({ pin, onClick }: { pin: Pin; onClick?: (pin: Pin) => void })
             >
               <CategoryIcon
                 iconName={category.icon}
-                color={isResolved ? "#22c55e" : isPending ? "#f59e0b" : category.color}
+                color={
+                  isResolved
+                    ? "#22c55e"
+                    : isPending
+                      ? "#f59e0b"
+                      : category.color
+                }
                 size={16}
               />
             </div>
@@ -163,12 +197,17 @@ function InsightMarker({
     <Marker longitude={insight.lng} latitude={insight.lat} anchor="center">
       <div
         className="cursor-pointer"
-        onClick={(e) => { e.stopPropagation(); onClick?.(insight); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick?.(insight);
+        }}
       >
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
           {isCritical && (
             <circle
-              cx="14" cy="14" r="13"
+              cx="14"
+              cy="14"
+              r="13"
               fill="none"
               stroke={color}
               strokeWidth="2"
@@ -177,7 +216,10 @@ function InsightMarker({
             />
           )}
           <rect
-            x="4" y="4" width="20" height="20"
+            x="4"
+            y="4"
+            width="20"
+            height="20"
             rx="3"
             transform="rotate(45 14 14)"
             fill={isDark ? "#0f0f0f" : "#ffffff"}
@@ -185,7 +227,8 @@ function InsightMarker({
             strokeWidth="2"
           />
           <text
-            x="14" y="17"
+            x="14"
+            y="17"
             textAnchor="middle"
             fill={color}
             fontSize="12"
@@ -221,8 +264,12 @@ function FloodAlertMarker({
       >
         <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
           <circle
-            cx="18" cy="18" r="16"
-            fill="none" stroke="#ef4444" strokeWidth="2"
+            cx="18"
+            cy="18"
+            r="16"
+            fill="none"
+            stroke="#ef4444"
+            strokeWidth="2"
             opacity="0.5"
             className="insight-pulse"
           />
@@ -234,7 +281,8 @@ function FloodAlertMarker({
             strokeLinejoin="round"
           />
           <text
-            x="18" y="25"
+            x="18"
+            y="25"
             textAnchor="middle"
             fill="#ef4444"
             fontSize="16"
@@ -261,8 +309,12 @@ function ProneZoneMarker({ zone }: { zone: ProneZone }) {
       >
         <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
           <circle
-            cx="22" cy="22" r="20"
-            fill="none" stroke={config.color} strokeWidth="1.5"
+            cx="22"
+            cy="22"
+            r="20"
+            fill="none"
+            stroke={config.color}
+            strokeWidth="1.5"
             opacity="0.4"
             className="insight-pulse"
           />
@@ -274,7 +326,8 @@ function ProneZoneMarker({ zone }: { zone: ProneZone }) {
             strokeLinejoin="round"
           />
           <text
-            x="22" y="31"
+            x="22"
+            y="31"
             textAnchor="middle"
             fill={config.color}
             fontSize="14"
@@ -283,7 +336,8 @@ function ProneZoneMarker({ zone }: { zone: ProneZone }) {
             {zone.type === "pothole" ? "⚠" : "!"}
           </text>
           <text
-            x="22" y="21"
+            x="22"
+            y="21"
             textAnchor="middle"
             fill={config.color}
             fontSize="8"
@@ -323,19 +377,19 @@ export default function MapView({
 
   const potholeZones = useMemo(
     () => proneZones.filter((z) => z.type === "pothole"),
-    [proneZones]
+    [proneZones],
   );
   const accidentZones = useMemo(
     () => proneZones.filter((z) => z.type === "accident"),
-    [proneZones]
+    [proneZones],
   );
   const potholeGeoJSON = useMemo(
     () => proneZonesToGeoJSON(potholeZones),
-    [potholeZones]
+    [potholeZones],
   );
   const accidentGeoJSON = useMemo(
     () => proneZonesToGeoJSON(accidentZones),
-    [accidentZones]
+    [accidentZones],
   );
 
   useEffect(() => {
@@ -370,7 +424,7 @@ export default function MapView({
       try {
         const res = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(highlightMunicipality)},Philippines&format=json&polygon_geojson=1&limit=1`,
-          { headers: { "User-Agent": "Bayanihan-App/1.0" } }
+          { headers: { "User-Agent": "Bayanihan-App/1.0" } },
         );
         const data = await res.json();
         if (!data[0]?.geojson) return;
@@ -381,10 +435,14 @@ export default function MapView({
           geometry: data[0].geojson,
         };
 
-        if (map.getLayer("municipality-fill")) map.removeLayer("municipality-fill");
-        if (map.getLayer("municipality-border")) map.removeLayer("municipality-border");
-        if (map.getLayer("municipality-glow")) map.removeLayer("municipality-glow");
-        if (map.getSource("municipality-boundary")) map.removeSource("municipality-boundary");
+        if (map.getLayer("municipality-fill"))
+          map.removeLayer("municipality-fill");
+        if (map.getLayer("municipality-border"))
+          map.removeLayer("municipality-border");
+        if (map.getLayer("municipality-glow"))
+          map.removeLayer("municipality-glow");
+        if (map.getSource("municipality-boundary"))
+          map.removeSource("municipality-boundary");
 
         map.addSource("municipality-boundary", {
           type: "geojson",
@@ -442,14 +500,11 @@ export default function MapView({
 
   const initialView = {
     longitude: 121.0437,
-    latitude: 14.6760,
+    latitude: 14.676,
     zoom: 13,
   };
 
-  const maxBounds: [number, number, number, number] = [
-    114.0, 4.5,
-    127.0, 21.5,
-  ];
+  const maxBounds: [number, number, number, number] = [114.0, 4.5, 127.0, 21.5];
 
   const handleClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -457,7 +512,7 @@ export default function MapView({
         onMapClick(e.lngLat.lat, e.lngLat.lng);
       }
     },
-    [isPlacingPin, onMapClick]
+    [isPlacingPin, onMapClick],
   );
 
   const handleRotate = useCallback(() => {
@@ -493,9 +548,12 @@ export default function MapView({
 
       if (theme === "dark") {
         if (
-          id.includes("road") || id.includes("bridge") ||
-          id.includes("tunnel") || id.includes("highway") ||
-          id.includes("street") || id.includes("path") ||
+          id.includes("road") ||
+          id.includes("bridge") ||
+          id.includes("tunnel") ||
+          id.includes("highway") ||
+          id.includes("street") ||
+          id.includes("path") ||
           id.includes("link")
         ) {
           if (layer.type === "line") {
@@ -507,12 +565,18 @@ export default function MapView({
           map.setPaintProperty(layer.id, "fill-color", "#ffffff");
           map.setPaintProperty(layer.id, "fill-opacity", 0.04);
         }
-        if (id.includes("water") && !id.includes("name") && layer.type === "fill") {
+        if (
+          id.includes("water") &&
+          !id.includes("name") &&
+          layer.type === "fill"
+        ) {
           map.setPaintProperty(layer.id, "fill-color", "#0c1a2e");
           map.setPaintProperty(layer.id, "fill-opacity", 0.8);
         }
         if (
-          (id.includes("label") || id.includes("name") || id.includes("place")) &&
+          (id.includes("label") ||
+            id.includes("name") ||
+            id.includes("place")) &&
           layer.type === "symbol"
         ) {
           map.setPaintProperty(layer.id, "text-color", "#888888");
@@ -520,7 +584,9 @@ export default function MapView({
           map.setPaintProperty(layer.id, "text-halo-width", 1.5);
         }
         if (
-          (id.includes("landuse") || id.includes("park") || id.includes("green")) &&
+          (id.includes("landuse") ||
+            id.includes("park") ||
+            id.includes("green")) &&
           layer.type === "fill"
         ) {
           map.setPaintProperty(layer.id, "fill-color", "#0a1a0a");
@@ -528,9 +594,12 @@ export default function MapView({
         }
       } else {
         if (
-          id.includes("road") || id.includes("bridge") ||
-          id.includes("tunnel") || id.includes("highway") ||
-          id.includes("street") || id.includes("path") ||
+          id.includes("road") ||
+          id.includes("bridge") ||
+          id.includes("tunnel") ||
+          id.includes("highway") ||
+          id.includes("street") ||
+          id.includes("path") ||
           id.includes("link")
         ) {
           if (layer.type === "line") {
@@ -542,12 +611,18 @@ export default function MapView({
           map.setPaintProperty(layer.id, "fill-color", "#d4d4d4");
           map.setPaintProperty(layer.id, "fill-opacity", 0.5);
         }
-        if (id.includes("water") && !id.includes("name") && layer.type === "fill") {
+        if (
+          id.includes("water") &&
+          !id.includes("name") &&
+          layer.type === "fill"
+        ) {
           map.setPaintProperty(layer.id, "fill-color", "#bfe0f5");
           map.setPaintProperty(layer.id, "fill-opacity", 0.6);
         }
         if (
-          (id.includes("label") || id.includes("name") || id.includes("place")) &&
+          (id.includes("label") ||
+            id.includes("name") ||
+            id.includes("place")) &&
           layer.type === "symbol"
         ) {
           map.setPaintProperty(layer.id, "text-color", "#555555");
@@ -555,7 +630,9 @@ export default function MapView({
           map.setPaintProperty(layer.id, "text-halo-width", 1.5);
         }
         if (
-          (id.includes("landuse") || id.includes("park") || id.includes("green")) &&
+          (id.includes("landuse") ||
+            id.includes("park") ||
+            id.includes("green")) &&
           layer.type === "fill"
         ) {
           map.setPaintProperty(layer.id, "fill-color", "#d5ecd4");
@@ -581,7 +658,10 @@ export default function MapView({
       onRotate={handleRotate}
       attributionControl={{}}
     >
-      <UserLocationTracker locateTrigger={locateTrigger} onLocationStatus={onLocationStatus} />
+      <UserLocationTracker
+        locateTrigger={locateTrigger}
+        onLocationStatus={onLocationStatus}
+      />
 
       {/* Flood zone overlay — opacity driven by waste density */}
       {showFloodZones && (
@@ -593,19 +673,26 @@ export default function MapView({
               "fill-color": [
                 "match",
                 ["get", "hazardLevel"],
-                "high", "#ef4444",
-                "medium", "#f87171",
-                "low", "#fca5a5",
+                "high",
+                "#ef4444",
+                "medium",
+                "#f87171",
+                "low",
+                "#fca5a5",
                 "#fca5a5",
               ],
               "fill-opacity": [
                 "interpolate",
                 ["linear"],
                 ["get", "wasteCount"],
-                0, isDark ? 0.06 : 0.05,
-                2, isDark ? 0.12 : 0.10,
-                4, isDark ? 0.22 : 0.18,
-                8, isDark ? 0.35 : 0.30,
+                0,
+                isDark ? 0.06 : 0.05,
+                2,
+                isDark ? 0.12 : 0.1,
+                4,
+                isDark ? 0.22 : 0.18,
+                8,
+                isDark ? 0.35 : 0.3,
               ],
             }}
           />
@@ -616,26 +703,35 @@ export default function MapView({
               "line-color": [
                 "match",
                 ["get", "hazardLevel"],
-                "high", "#ef4444",
-                "medium", "#f87171",
-                "low", "#fca5a5",
+                "high",
+                "#ef4444",
+                "medium",
+                "#f87171",
+                "low",
+                "#fca5a5",
                 "#fca5a5",
               ],
               "line-width": [
                 "interpolate",
                 ["linear"],
                 ["get", "wasteCount"],
-                0, 1,
-                4, 2.5,
-                8, 3.5,
+                0,
+                1,
+                4,
+                2.5,
+                8,
+                3.5,
               ],
               "line-opacity": [
                 "interpolate",
                 ["linear"],
                 ["get", "wasteCount"],
-                0, isDark ? 0.25 : 0.2,
-                4, isDark ? 0.6 : 0.5,
-                8, isDark ? 0.8 : 0.7,
+                0,
+                isDark ? 0.25 : 0.2,
+                4,
+                isDark ? 0.6 : 0.5,
+                8,
+                isDark ? 0.8 : 0.7,
               ],
               "line-dasharray": [4, 2],
             }}
@@ -661,7 +757,7 @@ export default function MapView({
             type="fill"
             paint={{
               "fill-color": PRONE_ZONE_CONFIG.pothole.color,
-              "fill-opacity": isDark ? 0.12 : 0.10,
+              "fill-opacity": isDark ? 0.12 : 0.1,
             }}
           />
           <Layer
@@ -685,7 +781,7 @@ export default function MapView({
             type="fill"
             paint={{
               "fill-color": PRONE_ZONE_CONFIG.accident.color,
-              "fill-opacity": isDark ? 0.12 : 0.10,
+              "fill-opacity": isDark ? 0.12 : 0.1,
             }}
           />
           <Layer

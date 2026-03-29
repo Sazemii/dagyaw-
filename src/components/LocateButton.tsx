@@ -1,3 +1,16 @@
+/**
+ * ==================================================================================
+ * Team Smart Dito sa Globe (SDG)
+ * BLUE HACKS 2026: GENERATIVE AI DISCLOSURE
+ * * This code was created with the assistance of AI tools such as:
+ * - Claude 4.6 Opus (Anthropic)
+ * - GPT 5.3 - Codex (OpenAI)
+ * - Claude Gemini 3.1 Pro (Google)
+ * * Purpose: This AI was utilized for code generation (logic and functions),
+ * brainstorming, code refinement (debugging), and performance optimization.
+ * ==================================================================================
+ */
+
 "use client";
 
 import { useTheme } from "./ThemeContext";
@@ -14,7 +27,8 @@ export default function LocateButton({ onClick, status }: LocateButtonProps) {
 
   const isRequesting = status === "requesting";
   const isActive = status === "active";
-  const isError = status === "denied" || status === "unavailable" || status === "error";
+  const isError =
+    status === "denied" || status === "unavailable" || status === "error";
 
   let title = "Find my location";
   if (isRequesting) title = "Getting location...";
@@ -70,18 +84,48 @@ export default function LocateButton({ onClick, status }: LocateButtonProps) {
       ) : (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-          <line x1="12" y1="3" x2="12" y2="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <line x1="12" y1="23" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <line x1="3" y1="12" x2="1" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <line x1="23" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <line
+            x1="12"
+            y1="3"
+            x2="12"
+            y2="1"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <line
+            x1="12"
+            y1="23"
+            x2="12"
+            y2="21"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <line
+            x1="3"
+            y1="12"
+            x2="1"
+            y2="12"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+          <line
+            x1="23"
+            y1="12"
+            x2="21"
+            y2="12"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
           <circle cx="12" cy="12" r="3" fill="currentColor" />
         </svg>
       )}
 
       {isError && (
-        <span
-          className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border border-black/20"
-        />
+        <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-red-500 border border-black/20" />
       )}
     </button>
   );
